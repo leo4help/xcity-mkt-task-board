@@ -46,24 +46,27 @@
 
   function getProjectSummaries(tasks) {
     const isDone = t => t.status === 'Done';
+    const isInProgress = t => t.status === 'Processing';
     const groups = {};
     const order = [];
 
     tasks.forEach(t => {
       const name = t.project || '未分類';
       if (!groups[name]) {
-        groups[name] = { project: name, projectLabel: displayProjectName(name), total: 0, done: 0, blocked: 0, tasks: [] };
+        groups[name] = { project: name, projectLabel: displayProjectName(name), total: 0, done: 0, processing: 0, blocked: 0, tasks: [] };
         order.push(name);
       }
       groups[name].total++;
       if (isDone(t)) groups[name].done++;
+      if (isInProgress(t)) groups[name].processing++;
       if (t.blocked) groups[name].blocked++;
       groups[name].tasks.push(t);
     });
 
     return order.map(name => {
       const g = groups[name];
-      g.completionRate = g.total > 0 ? Math.round((g.done / g.total) * 10000) / 100 : 0;
+      // 達成率把「持續執行中」的任務也算進去（比照已完成），不是只算 Done。
+      g.completionRate = g.total > 0 ? Math.round(((g.done + g.processing) / g.total) * 10000) / 100 : 0;
       g.tasks = g.tasks.slice().sort((a, b) => {
         const pDiff = (b.priority || 0) - (a.priority || 0);
         if (pDiff !== 0) return pDiff;
@@ -107,7 +110,8 @@
       total,
       doneCount,
       inProgressCount,
-      completionRate: total > 0 ? Math.round((doneCount / total) * 10000) / 100 : 0,
+      // 達成率把「持續執行中」的任務也算進去（比照已完成），不是只算 Done。
+      completionRate: total > 0 ? Math.round(((doneCount + inProgressCount) / total) * 10000) / 100 : 0,
       overdueCount: overdue.length,
       dueTodayCount: dueToday.length,
       blockedCount,

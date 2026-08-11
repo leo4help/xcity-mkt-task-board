@@ -5,6 +5,9 @@
   const AUTH_EXPIRY_DAYS = 7;
   const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 分鐘自動重新整理
 
+  let activeSection = (location.hash || '#overview').slice(1);
+  let lastProjects = [];
+
   const $ = (id) => document.getElementById(id);
 
   function hashPassword(str) {
@@ -43,6 +46,10 @@
     $('lock-screen').style.display = 'none';
     $('app').style.display = 'block';
     $('refresh-btn').addEventListener('click', loadAndRender);
+    if (window.XCITY_CONFIG && window.XCITY_CONFIG.SHEET_URL) {
+      $('sheet-link').href = window.XCITY_CONFIG.SHEET_URL;
+    }
+    bindNavClicks();
     loadAndRender();
     setInterval(loadAndRender, AUTO_REFRESH_MS);
   }
@@ -143,6 +150,37 @@
     $('project-nav').innerHTML = links.join('');
   }
 
+  // ── Tabs：每個分類（總覽／單一專案）各自佔一整頁，不是同一長頁往下滾動 ──
+
+  function activateSection(id) {
+    const validIds = ['overview'].concat(lastProjects.map(p => slugify(p.project)));
+    if (!validIds.includes(id)) id = 'overview';
+    activeSection = id;
+
+    const overviewEl = $('overview');
+    if (overviewEl) overviewEl.classList.toggle('tab-hidden', id !== 'overview');
+
+    document.querySelectorAll('#project-sections > section').forEach(sec => {
+      sec.classList.toggle('tab-hidden', sec.id !== id);
+    });
+
+    document.querySelectorAll('#project-nav a').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  function bindNavClicks() {
+    $('project-nav').addEventListener('click', e => {
+      const a = e.target.closest('a');
+      if (!a) return;
+      e.preventDefault();
+      const id = a.getAttribute('href').slice(1);
+      activateSection(id);
+      history.replaceState(null, '', '#' + id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   function renderKPIs(summary) {
     $('kpi-total').textContent = summary.total;
     $('kpi-total-sub').textContent = summary.projects.length + ' 個專案';
@@ -150,8 +188,8 @@
     $('kpi-doing').textContent = summary.inProgressCount;
     $('kpi-doing-sub').textContent = '待處理 ' + (summary.byStatus['To Do'] || 0) + ' 筆';
 
-    $('kpi-done').textContent = summary.doneCount;
-    $('kpi-rate-sub').textContent = '達成率 ' + summary.completionRate + '%';
+    $('kpi-done').textContent = summary.doneCount + ' / ' + summary.inProgressCount;
+    $('kpi-rate-sub').textContent = '達成率 ' + summary.completionRate + '%（已完成 + 持續執行）';
 
     $('kpi-blocked').textContent = summary.blockedCount;
     $('kpi-overdue-sub').textContent = '逾期 ' + summary.overdueCount + ' 筆・今日到期 ' + summary.dueTodayCount + ' 筆';
@@ -164,9 +202,9 @@
     rows.push(`<div class="row">本週共有 <span class="figure">${summary.projects.length}</span> 個專案在進行，累積 <span class="figure">${summary.total}</span> 筆任務</div>`);
     rows.push(`<div class="row">已完成 <span class="figure">${summary.doneCount}</span> 筆（達成率 ${summary.completionRate}%）</div>`);
     if (summary.blockedCount > 0) {
-      rows.push(`<div class="row">🚧 有 <span class="figure">${summary.blockedCount}</span> 筆任務卡關，需要支援（詳見各專案卡片）</div>`);
+      rows.push(`<div class="row">🚧 有 <span class="figure">${summary.blockedCount}</span> 筆任務需要支援（詳見各專案卡片）</div>`);
     } else {
-      rows.push(`<div class="row">🎉 目前沒有卡關中的任務</div>`);
+      rows.push(`<div class="row">🎉 目前沒有需要支援的任務</div>`);
     }
     $('overview-callout').innerHTML = rows.join('');
   }
@@ -208,7 +246,7 @@
         <section id="${slugify(proj.project)}" class="project-card card">
           <div class="project-head">
             <div class="project-name">${escapeHtml(proj.projectLabel || proj.project)}</div>
-            <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆卡關</span>` : ''}</div>
+            <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
@@ -233,10 +271,12 @@
       const now = new Date();
       $('last-updated').textContent = '最後更新：' + now.toLocaleString('zh-TW', { hour12: false }) + '　·　每 5 分鐘自動更新';
 
+      lastProjects = summary.projects;
       renderKPIs(summary);
       renderProjectNav(summary.projects);
       renderOverviewCallout(summary);
       renderProjectSections(summary.projects, summary.today);
+      activateSection(activeSection);
     } catch (err) {
       console.error(err);
       $('project-sections').innerHTML = `<div class="error">載入失敗：${escapeHtml(err.message)}<br><br>請檢查 config.js 的 API_URL 和 API_TOKEN 是否正確。</div>`;

@@ -19,13 +19,13 @@
  *          Processing 且有填日期時，這個日期代表「執行到什麼時候」（例如廣告投放到 8/31），
  *          過了那天畫面上只會顯示「請確認狀態」，不會被當成逾期；
  *          其他狀態（To Do / Waiting）有填日期，維持原本「截止日」的意思，過期會顯示逾期警示。
- *   - 需要支援：空白＝不需要支援；只要有填文字，就代表這個任務卡關、需要支援，
+ *   - 需要支援：空白＝不需要支援；只要有填文字，就代表這個任務需要支援，
  *              內容就是卡在哪裡 / 需要什麼支援（取代原本的「是否卡關」勾選欄位）。
  *
  * 分頁「config」（兩欄 key/value）：
  *   API_TOKEN                 必填，前端 config.js 要對應
  *   PASSWORD                  選填，前端目前預設不啟用密碼鎖（config.js 的 REQUIRE_PASSWORD = false）
- *   SLACK_BOT_TOKEN           選填，設定後才會推播卡關通知 / 每日摘要
+ *   SLACK_BOT_TOKEN           選填，設定後才會推播需要支援通知 / 每日摘要
  *   SLACK_CHANNEL_ID          選填
  *   SLACK_VERIFICATION_TOKEN  選填，Slash Command 驗證用
  *
@@ -344,7 +344,8 @@ function getSummary_(tasks) {
     total,
     doneCount,
     inProgressCount,
-    completionRate: total > 0 ? Math.round((doneCount / total) * 10000) / 100 : 0,
+    // 達成率把「持續執行中」的任務也算進去（比照已完成），不是只算 Done。
+    completionRate: total > 0 ? Math.round(((doneCount + inProgressCount) / total) * 10000) / 100 : 0,
     overdueCount: overdue.length,
     dueTodayCount: dueToday.length,
     blockedCount,
@@ -358,29 +359,32 @@ function getSummary_(tasks) {
 
 /**
  * 以「專案」為主體的分組摘要 — 前端呈現的核心資料結構。
- * 每個專案（＝一個分頁）包含自己的任務清單、完成度、卡關數。
+ * 每個專案（＝一個分頁）包含自己的任務清單、完成度、需要支援數。
  * 任務依優先度（高到低）排序，優先度相同時依期限排序。
  */
 function getProjectSummaries_(tasks) {
   const isDone = t => t.status === 'Done';
+  const isInProgress = t => t.status === 'Processing';
   const groups = {};
   const order = [];
 
   tasks.forEach(t => {
     const name = t.project || '未分類';
     if (!groups[name]) {
-      groups[name] = { project: name, projectLabel: displayProjectName_(name), total: 0, done: 0, blocked: 0, tasks: [] };
+      groups[name] = { project: name, projectLabel: displayProjectName_(name), total: 0, done: 0, processing: 0, blocked: 0, tasks: [] };
       order.push(name);
     }
     groups[name].total++;
     if (isDone(t)) groups[name].done++;
+    if (isInProgress(t)) groups[name].processing++;
     if (t.blocked) groups[name].blocked++;
     groups[name].tasks.push(t);
   });
 
   return order.map(name => {
     const g = groups[name];
-    g.completionRate = g.total > 0 ? Math.round((g.done / g.total) * 10000) / 100 : 0;
+    // 達成率把「持續執行中」的任務也算進去（比照已完成），不是只算 Done。
+    g.completionRate = g.total > 0 ? Math.round(((g.done + g.processing) / g.total) * 10000) / 100 : 0;
     g.tasks.sort((a, b) => {
       const pDiff = (b.priority || 0) - (a.priority || 0);
       if (pDiff !== 0) return pDiff;
@@ -546,7 +550,7 @@ function jsonResponse_(obj) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Slack — 卡關通知 + Slash Command + 每日摘要
+//  Slack — 需要支援通知 + Slash Command + 每日摘要
 // ════════════════════════════════════════════════════════════════════════════
 
 function callSlackPostMessage_(blocks, fallbackText) {
@@ -581,7 +585,7 @@ function notifyBlocked_(task) {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '🚧 *任務卡關*\n*' + (task.name || '（無名稱）') + '*\n專案：' + (displayProjectName_(task.project) || '-') +
+          text: '🚧 *任務需要支援*\n*' + (task.name || '（無名稱）') + '*\n專案：' + (displayProjectName_(task.project) || '-') +
             '\n*需要支援：* ' + (task.supportNeed || '（未填寫）')
         }
       },
@@ -592,7 +596,7 @@ function notifyBlocked_(task) {
         ]
       }
     ];
-    callSlackPostMessage_(blocks, '🚧 任務卡關：' + (task.name || ''));
+    callSlackPostMessage_(blocks, '🚧 任務需要支援：' + (task.name || ''));
   } catch (err) {
     logToSheet_('slack-notify-fail', String(err));
   }
@@ -649,14 +653,14 @@ function buildDailyBlocks_() {
           '　*完成率：* ' + summary.completionRate + '%' +
           '\n*今日到期：* ' + summary.dueTodayCount +
           '　*逾期：* ' + summary.overdueCount +
-          '　*卡關中：* ' + summary.blockedCount
+          '　*需要支援：* ' + summary.blockedCount
       }
     }
   ];
 
   if (summary.blockedTasks.length > 0) {
     blocks.push({ type: 'divider' });
-    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '*🚧 卡關中，需要支援*' } });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '*🚧 需要支援*' } });
     summary.blockedTasks.forEach(t => {
       blocks.push({
         type: 'section',

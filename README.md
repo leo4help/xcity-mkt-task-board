@@ -12,9 +12,9 @@
 
 ## 組成
 
-- `Code.gs` — Google Apps Script 後端。掃描每個專案分頁、彙整摘要、Slack 卡關通知、每日摘要。
+- `Code.gs` — Google Apps Script 後端。掃描每個專案分頁、彙整摘要、Slack 需要支援通知、每日摘要。
 - `index.html` / `app.js` — Marketing 團隊看板。依專案分區塊呈現任務，可新增/編輯任務、標記需要支援。
-- `dashboard.html` / `dashboard.js` — 老闆專用唯讀儀表板。同樣以專案為主體，KPI + 進度條 + 卡關清單，每 5 分鐘自動更新。
+- `dashboard.html` / `dashboard.js` — 老闆專用唯讀儀表板。同樣以專案為主體，KPI + 進度條 + 需要支援清單，每 5 分鐘自動更新。
 - `styles.css` — 兩個頁面共用的樣式（暖米杏底 + 金棕卡片，參考 HULKEN 週報風格）。
 - `config.js` — 前端設定（API 網址、密碼開關等），兩個網頁共用。
 
@@ -45,7 +45,7 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
   - 狀態是 `Processing` 時：留空＝沒有固定期限、會一直做下去；有填日期＝「執行到什麼時候」，畫面上顯示「執行至 2026-08-31」，過了那天只會提示「請確認狀態」（不是逾期），也不會被算進逾期／今日到期的統計。
   - 其他狀態（`To Do` / `Waiting` 等）：維持一般「截止日」的意思，留空代表還沒設定，過期會顯示逾期警示。
   - 舊資料如果欄位裡還留著 `Endless` 字樣，讀取時會自動視為留空，不用手動清。
-- **需要支援**：**空白＝不需要支援；只要有填文字，這筆任務就會被判定為卡關**，內容就是卡在哪裡、需要什麼支援。取代了原本「是否卡關」的勾選欄位。
+- **需要支援**：**空白＝不需要支援；只要有填文字，這筆任務就會被判定為需要支援**，內容就是卡在哪裡、需要什麼支援。取代了原本「是否卡關」的勾選欄位。
 
 **config**（兩欄 key / value，系統分頁）
 
@@ -53,7 +53,7 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
 |-----|------|
 | API_TOKEN | 前端與後端共用的驗證 token |
 | PASSWORD | 網頁登入密碼（目前預設不啟用，見上方說明） |
-| SLACK_BOT_TOKEN | 選填，設定後任務卡關會自動推播到 Slack |
+| SLACK_BOT_TOKEN | 選填，設定後任務需要支援會自動推播到 Slack |
 | SLACK_CHANNEL_ID | 選填 |
 | SLACK_VERIFICATION_TOKEN | 選填，Slash Command 驗證用 |
 
@@ -69,7 +69,7 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
    - 誰可以存取：任何人
 5. 複製部署後的網址，貼到 `config.js` 的 `API_URL`；`API_TOKEN` 貼上 config 分頁裡自動產生的值。
 6. 把 `index.html`、`app.js`、`styles.css`、`dashboard.html`、`dashboard.js`、`config.js` 放到你原本的靜態網頁託管位置（例如舊版用的 GitHub Pages），兩個頁面互有連結，不用分開部署。
-7. 若要開啟 Slack 卡關通知：在 Slack App 設定 Bot Token Scopes 需要 `chat:write`，把 Bot 加進頻道，`SLACK_CHANNEL_ID` 填入該頻道 ID。
+7. 若要開啟 Slack 需要支援通知：在 Slack App 設定 Bot Token Scopes 需要 `chat:write`，把 Bot 加進頻道，`SLACK_CHANNEL_ID` 填入該頻道 ID。
 8. 若要每日摘要推播（可選）：在 Apps Script 執行一次 `setupDailyTrigger()`，會建立每天早上 9 點的排程。
 9. 如果你是手動先建好專案分頁（沒有用網頁新增任務），可以執行一次 `applyValidationToAllProjectSheets()`，幫「優先度」「狀態」欄位補上下拉選單。
 
@@ -80,13 +80,13 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
 
 ## 兩個網頁的差異
 
-- **`index.html`（團隊看板）**：Marketing 團隊每天用，依專案區塊新增任務、更新狀態、標記需要支援。上方有篩選（優先度/狀態/卡關）與跳轉專案的導覽列。編輯任務時專案欄位是唯讀的（不支援直接換分頁，要換的話新增到新專案再刪除原本那筆）。
-- **`dashboard.html`（老闆儀表板）**：唯讀，KPI 卡片 + 各專案進度條 + 卡關清單，給老闆一眼掌握「在忙什麼／完成了什麼／需要什麼」。每 5 分鐘自動重新整理。
+- **`index.html`（團隊看板）**：Marketing 團隊每天用，依專案區塊新增任務、更新狀態、標記需要支援。上方有篩選（優先度/狀態/需要支援）與跳轉專案的導覽列。編輯任務時專案欄位是唯讀的（不支援直接換分頁，要換的話新增到新專案再刪除原本那筆）。
+- **`dashboard.html`（老闆儀表板）**：唯讀，KPI 卡片 + 各專案進度條 + 需要支援清單，給老闆一眼掌握「在忙什麼／完成了什麼／需要什麼」。每 5 分鐘自動重新整理。
 
 ## 技術細節備忘
 
 - 前端寫入（新增/編輯/刪除任務）走 `doPost`，用 `Content-Type: text/plain` 夾帶 JSON，避免瀏覽器對 Apps Script 發出 CORS preflight（Apps Script 不支援 OPTIONS 請求）。
 - 任務「需要支援」欄位從空白變成有內容時（新增或編輯），會自動觸發 Slack 通知（若已設定 Slack）。
-- `doGet` 回傳的 `summary.projects` 是依專案分頁分組好的陣列（含每個專案的任務清單、完成度、卡關數，任務已依優先度排序），前端兩個頁面都是直接依這個結構渲染區塊。
+- `doGet` 回傳的 `summary.projects` 是依專案分頁分組好的陣列（含每個專案的任務清單、完成度、需要支援數，任務已依優先度排序），前端兩個頁面都是直接依這個結構渲染區塊。
 - 期限欄位如果是 `Endless`，字串比較上天生就大於任何 `yyyy-MM-dd` 日期字串，所以不會被誤判成逾期或今日到期，前端會顯示「持續作業」。
 - `config.js` 裡的 `PROJECTS` 陣列可以先預填常用的專案名稱，新增任務表單會優先顯示在 datalist（純提示用，實際專案清單還是以 Sheet 上已存在的分頁為準）。

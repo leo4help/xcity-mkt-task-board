@@ -18,7 +18,8 @@
     projects: [],
     summary: null,
     filters: { priorityBand: '', status: '', blocked: '', search: '' },
-    editingId: null
+    editingId: null,
+    activeSection: (location.hash || '#overview').slice(1)
   };
 
   const $ = (id) => document.getElementById(id);
@@ -236,6 +237,37 @@
     $('project-nav').innerHTML = links.join('');
   }
 
+  // ── Tabs：每個分類（總覽／單一專案）各自佔一整頁，不是同一長頁往下滾動 ──
+
+  function activateSection(id) {
+    const validIds = ['overview'].concat(state.projects.map(p => slugify(p.project)));
+    if (!validIds.includes(id)) id = 'overview';
+    state.activeSection = id;
+
+    const overviewEl = $('overview');
+    if (overviewEl) overviewEl.classList.toggle('tab-hidden', id !== 'overview');
+
+    document.querySelectorAll('#project-sections > section').forEach(sec => {
+      sec.classList.toggle('tab-hidden', sec.id !== id);
+    });
+
+    document.querySelectorAll('#project-nav a').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+    });
+  }
+
+  function bindNavClicks() {
+    $('project-nav').addEventListener('click', e => {
+      const a = e.target.closest('a');
+      if (!a) return;
+      e.preventDefault();
+      const id = a.getAttribute('href').slice(1);
+      activateSection(id);
+      history.replaceState(null, '', '#' + id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   // ── Filters ──────────────────────────────────────────────────────────────
 
   function taskMatchesFilters(t) {
@@ -256,6 +288,7 @@
 
     if (state.projects.length === 0) {
       $('project-sections').innerHTML = '<div class="empty-state">還沒有任務，點右上角「+ 新增任務」開始吧。</div>';
+      activateSection('overview');
       return;
     }
 
@@ -282,7 +315,7 @@
         <section id="${slugify(proj.project)}" class="project-card card">
           <div class="project-head">
             <div class="project-name">${escapeHtml(proj.projectLabel || proj.project)}</div>
-            <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆卡關</span>` : ''}</div>
+            <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
@@ -297,6 +330,7 @@
 
     $('project-sections').innerHTML = html;
     bindTaskRowClicks();
+    activateSection(state.activeSection);
   }
 
   function renderTaskRow(t, today) {
@@ -404,8 +438,8 @@
             <div class="hint-text">留空＝沒有固定期限。狀態是 Processing 時，填日期代表「執行到什麼時候」；其他狀態則是一般的截止日。</div>
           </div>
           <div class="form-row">
-            <label>需要支援（卡在哪裡 / 需要什麼支援；沒有卡關就留空）</label>
-            <textarea id="f-support" placeholder="留空＝不需要支援；有填內容＝這筆任務會顯示卡關">${escapeHtml(task ? task.supportNeed : '')}</textarea>
+            <label>需要支援（卡在哪裡 / 需要什麼支援；不需要支援就留空）</label>
+            <textarea id="f-support" placeholder="留空＝不需要支援；有填內容＝這筆任務會顯示為需要支援">${escapeHtml(task ? task.supportNeed : '')}</textarea>
           </div>
           <div class="modal-actions">
             <div>${task ? '<button class="btn-danger" id="btn-delete">刪除任務</button>' : ''}</div>
@@ -496,6 +530,7 @@
 
     $('refresh-btn').addEventListener('click', loadAndRender);
     $('add-task-btn').addEventListener('click', () => openModal(null));
+    bindNavClicks();
 
     if (window.XCITY_CONFIG && window.XCITY_CONFIG.SHEET_URL) {
       $('sheet-link').href = window.XCITY_CONFIG.SHEET_URL;

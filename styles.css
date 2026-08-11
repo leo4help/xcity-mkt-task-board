@@ -113,6 +113,10 @@ nav.secnav a {
   text-decoration: none; padding: 8px 14px; border-radius: 8px; transition: background .15s, color .15s;
 }
 nav.secnav a:hover { background: var(--tan-soft); color: var(--brand-deep); }
+nav.secnav a.active { background: var(--brand-deep); color: #fff; }
+nav.secnav a.active:hover { background: var(--brand-deep); color: #fff; }
+
+.tab-hidden { display: none !important; }
 
 /* ── Sections ── */
 
