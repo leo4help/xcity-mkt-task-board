@@ -263,9 +263,9 @@
       const visibleTasks = proj.tasks.filter(taskMatchesFilters);
       const blockedInProject = proj.tasks.filter(t => t.blocked);
 
-      const taskRowsHtml = visibleTasks.length > 0
+      const rowsHtml = visibleTasks.length > 0
         ? visibleTasks.map(t => renderTaskRow(t, today)).join('')
-        : '<div class="empty-state">沒有符合篩選條件的任務</div>';
+        : '<tr><td colspan="5" class="empty-state">沒有符合篩選條件的任務</td></tr>';
 
       const supportHtml = blockedInProject.length > 0 ? `
         <div class="callout support">
@@ -285,7 +285,12 @@
             <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆卡關</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
-          <div class="task-list">${taskRowsHtml}</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>任務名稱</th><th>狀態</th><th>優先度</th><th>期限</th><th>需要支援</th></tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
           ${supportHtml}
         </section>`;
     }).join('');
@@ -298,23 +303,17 @@
     const due = getDueInfo(t.deadline, today, t.status);
     const priCls = 'priority-' + priorityBand(t.priority);
 
-    return `<div class="task-row" data-id="${escapeHtml(t.id)}">
-      <span class="task-priority-bar ${priCls}" title="優先度 ${escapeHtml(t.priority)}"></span>
-      <div class="task-row-main">
-        <div class="task-row-name">${escapeHtml(t.name)}</div>
-        <div class="task-row-meta">${t.blocked && t.supportNeed ? '需要支援：' + escapeHtml(t.supportNeed) : ''}</div>
-      </div>
-      <div class="task-row-tags">
-        <span class="tag priority-chip ${priCls}">${escapeHtml(t.priority)}</span>
-        <span class="${statusTagClass(t.status)}">${escapeHtml(t.status || '-')}</span>
-        ${t.blocked ? '<span class="tag blocked">🚧 卡關</span>' : ''}
-        <span class="due-pill ${due.cls}">${due.text}</span>
-      </div>
-    </div>`;
+    return `<tr data-id="${escapeHtml(t.id)}">
+      <td class="name-cell">${escapeHtml(t.name)}</td>
+      <td><span class="${statusTagClass(t.status)}">${escapeHtml(t.status || '-')}</span></td>
+      <td><span class="tag priority-chip ${priCls}">${escapeHtml(t.priority)}</span></td>
+      <td><span class="due-pill ${due.cls}">${escapeHtml(due.text)}</span></td>
+      <td>${t.blocked ? escapeHtml(t.supportNeed) : ''}</td>
+    </tr>`;
   }
 
   function bindTaskRowClicks() {
-    document.querySelectorAll('.task-row').forEach(el => {
+    document.querySelectorAll('#project-sections tbody tr[data-id]').forEach(el => {
       el.addEventListener('click', () => openModal(el.dataset.id));
     });
   }
