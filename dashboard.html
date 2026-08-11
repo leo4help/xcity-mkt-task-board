@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketing 任務儀表板</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="lock-screen" class="lock-screen" style="display:none;">
+    <div class="lock-box">
+      <div class="lock-icon">🔒</div>
+      <h2>Marketing 任務儀表板</h2>
+      <p class="lock-hint">請輸入存取密碼</p>
+      <input type="password" id="lock-input" placeholder="密碼" autocomplete="off">
+      <button id="lock-submit">進入</button>
+      <p class="lock-error" id="lock-error"></p>
+    </div>
+  </div>
+
+  <div id="app" style="display:none;">
+    <header class="top">
+      <div class="header-inner">
+        <div class="logo-row">
+          <div class="logo-block">XCITY</div>
+          <div class="logo-sub">Marketing</div>
+        </div>
+        <div class="meta-chip" id="last-updated">載入中...</div>
+      </div>
+      <div class="header-inner" style="margin-top:6px;">
+        <div class="title-block">
+          <h1>任務儀表板</h1>
+          <div class="sub">依專案呈現進度・每 5 分鐘自動更新</div>
+        </div>
+        <div class="header-actions">
+          <a href="index.html" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;">打開任務看板</a>
+          <button id="refresh-btn" class="btn-icon" title="重新整理">⟳</button>
+        </div>
+      </div>
+    </header>
+
+    <nav class="secnav">
+      <div class="inner" id="project-nav">
+        <a href="#overview">總覽</a>
+      </div>
+    </nav>
+
+    <div class="wrap">
+      <section id="overview">
+        <div class="sec-head"><h2>本週總覽</h2><span class="sec-tag" id="overview-tag">全部專案</span></div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">總任務數</div>
+            <div class="kpi-value" id="kpi-total">-</div>
+            <div class="kpi-sub" id="kpi-total-sub">-</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">進行中</div>
+            <div class="kpi-value" id="kpi-doing">-</div>
+            <div class="kpi-sub" id="kpi-doing-sub">-</div>
+          </div>
+          <div class="kpi-card hero">
+            <div class="kpi-label">已完成 / 達成率</div>
+            <div class="kpi-value" id="kpi-done">-</div>
+            <div class="kpi-sub" id="kpi-rate-sub">-</div>
+          </div>
+          <div class="kpi-card alert">
+            <div class="kpi-label">需要支援</div>
+            <div class="kpi-value" id="kpi-blocked">-</div>
+            <div class="kpi-sub" id="kpi-overdue-sub">-</div>
+          </div>
+        </div>
+
+        <div class="callout" id="overview-callout"></div>
+      </section>
+
+      <main id="project-sections">
+        <div class="loading">載入中...</div>
+      </main>
+
+      <footer class="page-footer">
+        <p><a href="index.html">打開任務看板 →</a></p>
+      </footer>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
