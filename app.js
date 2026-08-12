@@ -246,11 +246,13 @@
     return Array.from(new Set((window.XCITY_DEMO_DEFAULT_PARTNERS || []).concat(used)));
   }
 
+  // 跟 Code.gs 的 generatePartnerTaskId_ 一致：用「S-」+ 連字號開頭，不用單一字母，
+  // 避免專案分頁排到字母 P 時，跟舊版夥伴支援 ID（P1、P2...）長得一樣、搞混。
   function nextDemoPartnerId() {
     const list = window.XCITY_DEMO_PARTNER_TASKS || [];
-    const nums = list.map(p => { const m = String(p.id).match(/(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
+    const nums = list.map(p => { const m = String(p.id).match(/^S-(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
     const max = nums.length ? Math.max.apply(null, nums) : 0;
-    return 'P' + (max + 1);
+    return 'S-' + (max + 1);
   }
 
   function demoPostApi(action, extra) {

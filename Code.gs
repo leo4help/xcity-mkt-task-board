@@ -517,6 +517,9 @@ function readPartnerTasks_() {
   return items;
 }
 
+// ID 開頭故意用「S-」（支援）+ 連字號，不是單一字母：專案任務 ID 是「字母＋數字」（A1、P1、AA1...），
+// 分頁一多，字母遲早會排到 P，跟舊版「P + 數字」的夥伴支援 ID 會長得一模一樣、容易搞混。
+// 連字號是專案任務 ID 不可能出現的字元，保證這兩種 ID 永遠不會撞在一起。
 function generatePartnerTaskId_(sheet) {
   const values = sheet.getDataRange().getValues();
   let maxNum = 0;
@@ -525,12 +528,12 @@ function generatePartnerTaskId_(sheet) {
     const idCol = headers.indexOf('ID');
     if (idCol !== -1) {
       for (let i = 1; i < values.length; i++) {
-        const m = String(values[i][idCol]).trim().match(/^P(\d+)$/);
+        const m = String(values[i][idCol]).trim().match(/^S-(\d+)$/);
         if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
       }
     }
   }
-  return 'P' + (maxNum + 1);
+  return 'S-' + (maxNum + 1);
 }
 
 function findPartnerTaskRow_(id) {

@@ -41,9 +41,9 @@
   window.XCITY_DEMO_DEFAULT_PARTNERS = ['Andy', 'Charlie', 'Leo', '溫', '培培', '朵朵'];
 
   window.XCITY_DEMO_PARTNER_TASKS = [
-    { id: 'P1', partner: 'Andy', project: '專案A_8月 KOL 開箱活動', taskId: 'A3', detail: '協助跟老闆爭取額外預算核准', status: 'Doing', deadline: '2026-08-12', note: '' },
-    { id: 'P2', partner: '溫', project: '專案B_官網改版', taskId: 'B2', detail: '請 IT 部門開放測試站權限', status: 'To Do', deadline: '2026-08-13', note: '已催第二次' },
-    { id: 'P3', partner: 'Charlie', project: '專案D_IG 會員招募', taskId: 'D1', detail: '協助法務審查文案用詞', status: 'Done', deadline: '2026-08-08', note: '合規已確認' }
+    { id: 'S-1', partner: 'Andy', project: '專案A_8月 KOL 開箱活動', taskId: 'A3', detail: '協助跟老闆爭取額外預算核准', status: 'Doing', deadline: '2026-08-12', note: '' },
+    { id: 'S-2', partner: '溫', project: '專案B_官網改版', taskId: 'B2', detail: '請 IT 部門開放測試站權限', status: 'To Do', deadline: '2026-08-13', note: '已催第二次' },
+    { id: 'S-3', partner: 'Charlie', project: '專案D_IG 會員招募', taskId: 'D1', detail: '協助法務審查文案用詞', status: 'Done', deadline: '2026-08-08', note: '合規已確認' }
   ];
 
   // 分頁名稱如果是「專案A_...」這種「專案＋英文字母」開頭的命名慣例，顯示時把前綴拿掉
