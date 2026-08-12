@@ -605,7 +605,7 @@ function notifyBlocked_(task) {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: '🚧 *任務需要支援*\n*' + (task.name || '（無名稱）') + '*\n專案：' + (displayProjectName_(task.project) || '-') +
+          text: '🚩 *任務需要支援*\n*' + (task.name || '（無名稱）') + '*\n專案：' + (displayProjectName_(task.project) || '-') +
             '\n*需要支援：* ' + (task.supportNeed || '（未填寫）')
         }
       },
@@ -616,7 +616,7 @@ function notifyBlocked_(task) {
         ]
       }
     ];
-    callSlackPostMessage_(blocks, '🚧 任務需要支援：' + (task.name || ''));
+    callSlackPostMessage_(blocks, '🚩 任務需要支援：' + (task.name || ''));
   } catch (err) {
     logToSheet_('slack-notify-fail', String(err));
   }
@@ -680,7 +680,7 @@ function buildDailyBlocks_() {
 
   if (summary.blockedTasks.length > 0) {
     blocks.push({ type: 'divider' });
-    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '*🚧 需要支援*' } });
+    blocks.push({ type: 'section', text: { type: 'mrkdwn', text: '*🚩 需要支援*' } });
     summary.blockedTasks.forEach(t => {
       blocks.push({
         type: 'section',

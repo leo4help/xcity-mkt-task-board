@@ -292,7 +292,7 @@
         <td>${p.total}</td>
         <td>${todoCount}</td>
         <td>${p.completionRate}%</td>
-        <td>${p.blocked > 0 ? `<span style="color:var(--bad);font-weight:700;">🚧 ${p.blocked}</span>` : '-'}</td>
+        <td>${p.blocked > 0 ? `<span style="color:var(--bad);font-weight:700;">🚩 ${p.blocked}</span>` : '-'}</td>
       </tr>`;
     }).join('');
 
@@ -427,7 +427,7 @@
         <div class="callout support">
           ${blockedInProject.map(t => `
             <div class="support-item">
-              <div class="support-item-title">🚧 ${escapeHtml(t.name)}</div>
+              <div class="support-item-title">🚩 ${escapeHtml(t.name)}</div>
               <div class="support-item-meta">${escapeHtml(t.status || '')} · ${escapeHtml(getDueInfo(t.deadline, today, t.status).text)} · 優先度 ${escapeHtml(t.priority)}</div>
               <div class="support-item-need">${escapeHtml(t.supportNeed || '')}</div>
             </div>
@@ -438,7 +438,7 @@
         <section id="${slugify(proj.project)}" class="project-card card">
           <div class="project-head">
             <div class="project-name">${escapeHtml(proj.projectLabel || proj.project)}</div>
-            <div class="project-progress-chip"><b>${doneProcessingText(proj.done, proj.processing)}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
+            <div class="project-progress-chip"><b>${doneProcessingText(proj.done, proj.processing)}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚩 ${proj.blocked} 筆需要支援</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">

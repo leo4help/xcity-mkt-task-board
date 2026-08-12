@@ -277,7 +277,7 @@
     rows.push(`<div class="row">本週共有 <span class="figure">${summary.projects.length}</span> 個專案在進行，累積 <span class="figure">${summary.total}</span> 筆任務</div>`);
     rows.push(`<div class="row">已完成 <span class="figure">${summary.doneCount}</span> 筆（達成率 ${summary.completionRate}%）</div>`);
     if (summary.blockedCount > 0) {
-      rows.push(`<div class="row">🚧 有 <span class="figure">${summary.blockedCount}</span> 筆任務需要支援（詳見各專案卡片）</div>`);
+      rows.push(`<div class="row">🚩 有 <span class="figure">${summary.blockedCount}</span> 筆任務需要支援（詳見各專案卡片）</div>`);
     } else {
       rows.push(`<div class="row">🎉 目前沒有需要支援的任務</div>`);
     }
@@ -312,7 +312,7 @@
         <div class="callout support">
           ${blockedTasks.map(t => `
             <div class="support-item">
-              <div class="support-item-title">🚧 ${escapeHtml(t.name)}</div>
+              <div class="support-item-title">🚩 ${escapeHtml(t.name)}</div>
               <div class="support-item-meta">${escapeHtml(t.status || '')} · ${escapeHtml(getDueInfo(t.deadline, today, t.status).text)} · 優先度 ${escapeHtml(t.priority)}</div>
               <div class="support-item-need">${escapeHtml(t.supportNeed || '')}</div>
             </div>
@@ -323,7 +323,7 @@
         <section id="${slugify(proj.project)}" class="project-card card">
           <div class="project-head">
             <div class="project-name">${escapeHtml(proj.projectLabel || proj.project)}</div>
-            <div class="project-progress-chip"><b>${doneProcessingText(proj.done, proj.processing)}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
+            <div class="project-progress-chip"><b>${doneProcessingText(proj.done, proj.processing)}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚩 ${proj.blocked} 筆需要支援</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
