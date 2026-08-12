@@ -13,6 +13,8 @@
   const AUTH_KEY = 'xcity_marketing_auth_token';
   const AUTH_EXPIRY_DAYS = 7;
 
+  const PARTNER_STATUS_LIST = ['To Do', 'Doing', 'Done'];
+
   const state = {
     tasks: [],
     projects: [],
@@ -20,7 +22,10 @@
     filters: { priorityBand: '', status: '', blocked: '', search: '' },
     editingId: null,
     activeSection: (location.hash || '#overview').slice(1),
-    sort: { column: 'deadline', dir: 'asc' } // 預設用期限排序，越近的排越上面
+    sort: { column: 'deadline', dir: 'asc' }, // 預設用期限排序，越近的排越上面
+    partnerTasks: [],
+    partnerList: [],
+    editingPartnerId: null
   };
 
   const SORT_COLUMNS = [
@@ -177,7 +182,13 @@
 
   async function fetchData() {
     if (isDemoMode()) {
-      return { tasks: window.XCITY_DEMO_TASKS, summary: window.XCITY_DEMO_BUILD_SUMMARY(window.XCITY_DEMO_TASKS) };
+      const summary = window.XCITY_DEMO_BUILD_SUMMARY(window.XCITY_DEMO_TASKS);
+      return {
+        tasks: window.XCITY_DEMO_TASKS,
+        summary,
+        partnerTasks: resolveDemoPartnerTasks(),
+        partnerList: getDemoPartnerList()
+      };
     }
     requireConfig();
     const url = window.XCITY_CONFIG.API_URL + '?token=' + encodeURIComponent(window.XCITY_CONFIG.API_TOKEN) + '&action=all';
@@ -216,8 +227,54 @@
     return letter + (max + 1);
   }
 
+  // 依「關聯專案／關聯任務」把夥伴支援項目補上顯示用的 projectLabel / taskName，邏輯對應 Code.gs 的 readPartnerTasks_
+  function resolveDemoPartnerTasks() {
+    const tasks = window.XCITY_DEMO_TASKS;
+    const list = window.XCITY_DEMO_PARTNER_TASKS || [];
+    return list.map(p => {
+      const relatedTask = p.taskId ? tasks.find(t => t.id === p.taskId) : null;
+      const projTask = p.project ? tasks.find(t => t.project === p.project) : null;
+      return Object.assign({}, p, {
+        projectLabel: projTask ? (projTask.projectLabel || projTask.project) : (p.project || ''),
+        taskName: relatedTask ? relatedTask.name : ''
+      });
+    });
+  }
+
+  function getDemoPartnerList() {
+    const used = (window.XCITY_DEMO_PARTNER_TASKS || []).map(p => p.partner).filter(Boolean);
+    return Array.from(new Set((window.XCITY_DEMO_DEFAULT_PARTNERS || []).concat(used)));
+  }
+
+  function nextDemoPartnerId() {
+    const list = window.XCITY_DEMO_PARTNER_TASKS || [];
+    const nums = list.map(p => { const m = String(p.id).match(/(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
+    const max = nums.length ? Math.max.apply(null, nums) : 0;
+    return 'P' + (max + 1);
+  }
+
   function demoPostApi(action, extra) {
     const tasks = window.XCITY_DEMO_TASKS;
+    if (action === 'addPartnerTask') {
+      if (!window.XCITY_DEMO_PARTNER_TASKS) window.XCITY_DEMO_PARTNER_TASKS = [];
+      const list = window.XCITY_DEMO_PARTNER_TASKS;
+      const task = Object.assign({ id: nextDemoPartnerId() }, extra.task);
+      list.push(task);
+      return { ok: true, task };
+    }
+    if (action === 'updatePartnerTask') {
+      const list = window.XCITY_DEMO_PARTNER_TASKS || [];
+      const idx = list.findIndex(p => p.id === extra.id);
+      if (idx === -1) return { error: '找不到夥伴支援項目 ID：' + extra.id };
+      list[idx] = Object.assign({}, list[idx], extra.task);
+      return { ok: true, task: list[idx] };
+    }
+    if (action === 'deletePartnerTask') {
+      const list = window.XCITY_DEMO_PARTNER_TASKS || [];
+      const idx = list.findIndex(p => p.id === extra.id);
+      if (idx !== -1) list.splice(idx, 1);
+      return { ok: true };
+    }
     if (action === 'addTask') {
       const existingProjects = Array.from(new Set(tasks.map(t => t.project)));
       const rawProject = (extra.task.project || '').trim();
@@ -272,7 +329,7 @@
   function renderProjectNav() {
     const links = ['<a href="#overview">總覽</a>'].concat(
       state.projects.map(p => `<a href="#${slugify(p.project)}">${escapeHtml(p.projectLabel || p.project)}</a>`)
-    );
+    ).concat(['<a href="#partners">夥伴支援</a>']);
     $('project-nav').innerHTML = links.join('');
   }
 
@@ -306,15 +363,50 @@
     });
   }
 
+  // ── Render：夥伴支援任務（單一分頁，不分專案）─────────────────────────
+
+  function renderPartnersTable() {
+    const tbody = $('partners-body');
+    if (!tbody) return;
+
+    if (state.partnerTasks.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">還沒有夥伴支援項目，點右上角「+ 新增支援項目」開始吧。</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.partnerTasks.map(t => {
+      const statusCls = 'tag status-' + (t.status || 'To Do').toLowerCase().replace(/\s+/g, '-');
+      return `<tr data-id="${escapeHtml(t.id)}">
+        <td class="name-cell">${escapeHtml(t.partner)}</td>
+        <td>${escapeHtml(t.projectLabel || '-')}</td>
+        <td>${escapeHtml(t.taskName || '-')}</td>
+        <td>${escapeHtml(t.detail || '')}</td>
+        <td><span class="${statusCls}">${escapeHtml(t.status || '-')}</span></td>
+        <td>${escapeHtml(t.deadline || '待訂')}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+      </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('tr[data-id]').forEach(el => {
+      el.addEventListener('click', () => openPartnerModal(el.dataset.id));
+    });
+  }
+
   // ── Tabs：每個分類（總覽／單一專案）各自佔一整頁，不是同一長頁往下滾動 ──
 
   function activateSection(id) {
-    const validIds = ['overview'].concat(state.projects.map(p => slugify(p.project)));
+    const validIds = ['overview', 'partners'].concat(state.projects.map(p => slugify(p.project)));
     if (!validIds.includes(id)) id = 'overview';
     state.activeSection = id;
 
     const overviewEl = $('overview');
     if (overviewEl) overviewEl.classList.toggle('tab-hidden', id !== 'overview');
+
+    const partnersEl = $('partners');
+    if (partnersEl) partnersEl.classList.toggle('tab-hidden', id !== 'partners');
+
+    const filtersEl = $('filters-bar');
+    if (filtersEl) filtersEl.classList.toggle('tab-hidden', id === 'partners');
 
     document.querySelectorAll('#project-sections > section').forEach(sec => {
       sec.classList.toggle('tab-hidden', sec.id !== id);
@@ -485,6 +577,8 @@
     renderProjectNav();
     renderOverviewProjectsTable();
     renderProjectSections();
+    renderPartnersTable();
+    activateSection(state.activeSection);
   }
 
   async function loadAndRender() {
@@ -495,6 +589,8 @@
       state.tasks = data.tasks || [];
       state.projects = (data.summary && data.summary.projects) || [];
       state.summary = data.summary || null;
+      state.partnerTasks = data.partnerTasks || [];
+      state.partnerList = data.partnerList || [];
       const now = new Date();
       $('last-updated').textContent = '最後更新：' + now.toLocaleString('zh-TW', { hour12: false });
       render();
@@ -585,6 +681,7 @@
   function closeModal() {
     $('modal-root').innerHTML = '';
     state.editingId = null;
+    state.editingPartnerId = null;
   }
 
   async function saveTask() {
@@ -645,6 +742,133 @@
     }
   }
 
+  // ── Modal（夥伴支援任務：新增 / 編輯）────────────────────────────────────
+
+  function partnerOptions() {
+    return state.partnerList.map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
+  }
+
+  function projectSelectOptionsHtml(selected) {
+    const opts = ['<option value="">（無）</option>'].concat(
+      state.projects.map(p => `<option value="${escapeHtml(p.project)}"${p.project === selected ? ' selected' : ''}>${escapeHtml(p.projectLabel || p.project)}</option>`)
+    );
+    return opts.join('');
+  }
+
+  // 選完專案後，關聯任務只列出「這個專案裡有標記需要支援」的任務，避免清單太長找不到重點
+  function taskSelectOptionsHtml(projectName, selectedTaskId) {
+    if (!projectName) return '<option value="">（先選專案）</option>';
+    const proj = state.projects.find(p => p.project === projectName);
+    const tasks = proj ? proj.tasks.filter(t => t.blocked) : [];
+    if (tasks.length === 0) return '<option value="">（這個專案目前沒有標記需要支援的任務）</option>';
+    const opts = ['<option value="">（無，僅關聯專案）</option>'].concat(
+      tasks.map(t => `<option value="${escapeHtml(t.id)}"${t.id === selectedTaskId ? ' selected' : ''}>${escapeHtml(t.name)}</option>`)
+    );
+    return opts.join('');
+  }
+
+  function openPartnerModal(id) {
+    state.editingPartnerId = id || null;
+    const item = id ? state.partnerTasks.find(t => t.id === id) : null;
+
+    const html = `
+      <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+          <h3>${item ? '編輯夥伴支援項目' : '新增夥伴支援項目'}</h3>
+          <div class="form-row">
+            <label>夥伴名</label>
+            <input type="text" list="partner-list" id="pf-partner" value="${escapeHtml(item ? item.partner : '')}" placeholder="輸入現有夥伴名，或打新名字新增">
+            <datalist id="partner-list">${partnerOptions()}</datalist>
+          </div>
+          <div class="form-row">
+            <label>關聯專案（選填）</label>
+            <select id="pf-project">${projectSelectOptionsHtml(item ? item.project : '')}</select>
+          </div>
+          <div class="form-row">
+            <label>關聯任務（選填，只列出該專案裡標記需要支援的任務）</label>
+            <select id="pf-task">${taskSelectOptionsHtml(item ? item.project : '', item ? item.taskId : '')}</select>
+          </div>
+          <div class="form-row">
+            <label>支援項目/細節</label>
+            <textarea id="pf-detail" placeholder="請這位夥伴支援什麼">${escapeHtml(item ? item.detail : '')}</textarea>
+          </div>
+          <div class="form-row">
+            <label>狀態</label>
+            <select id="pf-status">
+              ${PARTNER_STATUS_LIST.map(s => `<option value="${s}"${item && item.status === s ? ' selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <label>期限（預計支援交付日）</label>
+            <input type="date" id="pf-deadline" value="${escapeHtml(item ? item.deadline : '')}">
+          </div>
+          <div class="form-row">
+            <label>備注</label>
+            <textarea id="pf-note" placeholder="補充資訊">${escapeHtml(item ? item.note : '')}</textarea>
+          </div>
+          <div class="modal-actions">
+            <div>${item ? '<button class="btn-danger" id="btn-delete-partner">刪除</button>' : ''}</div>
+            <div class="modal-actions-right">
+              <button class="btn-secondary" id="btn-cancel">取消</button>
+              <button class="btn-primary" id="btn-save-partner">儲存</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    $('modal-root').innerHTML = html;
+    $('btn-cancel').addEventListener('click', closeModal);
+    $('modal-overlay').addEventListener('click', e => { if (e.target.id === 'modal-overlay') closeModal(); });
+    $('pf-project').addEventListener('change', e => {
+      $('pf-task').innerHTML = taskSelectOptionsHtml(e.target.value, '');
+    });
+    $('btn-save-partner').addEventListener('click', savePartnerTask);
+    if (item) $('btn-delete-partner').addEventListener('click', deletePartnerTaskEntry);
+  }
+
+  async function savePartnerTask() {
+    const partner = $('pf-partner').value.trim();
+    if (!partner) { alert('請輸入夥伴名'); return; }
+
+    const payload = {
+      partner,
+      project: $('pf-project').value,
+      taskId: $('pf-task').value,
+      detail: $('pf-detail').value.trim(),
+      status: $('pf-status').value,
+      deadline: $('pf-deadline').value,
+      note: $('pf-note').value.trim()
+    };
+
+    const btn = $('btn-save-partner');
+    btn.textContent = '儲存中...';
+    btn.disabled = true;
+    try {
+      if (state.editingPartnerId) {
+        await postApi('updatePartnerTask', { id: state.editingPartnerId, task: payload });
+      } else {
+        await postApi('addPartnerTask', { task: payload });
+      }
+      closeModal();
+      await loadAndRender();
+    } catch (err) {
+      alert('儲存失敗：' + err.message);
+      btn.textContent = '儲存';
+      btn.disabled = false;
+    }
+  }
+
+  async function deletePartnerTaskEntry() {
+    if (!confirm('確定要刪除這筆夥伴支援項目嗎？')) return;
+    try {
+      await postApi('deletePartnerTask', { id: state.editingPartnerId });
+      closeModal();
+      await loadAndRender();
+    } catch (err) {
+      alert('刪除失敗：' + err.message);
+    }
+  }
+
   // ── Events ───────────────────────────────────────────────────────────────
 
   function bindEvents() {
@@ -664,6 +888,7 @@
 
     $('refresh-btn').addEventListener('click', loadAndRender);
     $('add-task-btn').addEventListener('click', () => openModal(null));
+    $('add-partner-btn').addEventListener('click', () => openPartnerModal(null));
     bindNavClicks();
     bindSortHeaderClicks();
 

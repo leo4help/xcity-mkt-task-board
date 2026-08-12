@@ -43,9 +43,10 @@
 
 const SHEET_NAME_CONFIG = 'config';
 const SHEET_NAME_LOG = 'debug_log';
+const SHEET_NAME_PARTNERS = '夥伴支援任務';
 
 // 非專案分頁（不會被當成專案讀取）。如果你之後新增其他非專案用途的分頁，把名稱加進這個陣列。
-const SYSTEM_SHEETS = ['config', 'debug_log', 'Overview', 'Demo'];
+const SYSTEM_SHEETS = ['config', 'debug_log', 'Overview', 'Demo', '夥伴支援任務'];
 
 const TIMEZONE = 'Asia/Taipei';
 const DASHBOARD_URL = 'https://leo4help.github.io/task-board/dashboard.html'; // 部署後請自行更新
@@ -65,6 +66,21 @@ const HEADER_MAP = {
 
 const STATUS_LIST = ['To Do', 'Processing', 'Waiting', 'On Hold', 'Done'];
 const DEFAULT_PRIORITY = 5;
+
+// ── 夥伴支援任務（獨立的單一分頁，不是每專案一個，用來追「請哪個夥伴支援什麼、進度如何」）──
+const PARTNER_HEADERS = ['ID', '夥伴名', '關聯專案', '關聯任務', '支援項目/細節', '狀態', '期限', '備注'];
+const PARTNER_HEADER_MAP = {
+  'ID': 'id',
+  '夥伴名': 'partner',
+  '關聯專案': 'project',
+  '關聯任務': 'taskId',
+  '支援項目/細節': 'detail',
+  '狀態': 'status',
+  '期限': 'deadline',
+  '備注': 'note'
+};
+const PARTNER_STATUS_LIST = ['To Do', 'Doing', 'Done'];
+const DEFAULT_PARTNERS = ['Andy', 'Charlie', 'Leo', '溫', '培培', '朵朵'];
 
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -419,6 +435,169 @@ function getProjectSummaries_(tasks) {
 
 
 // ════════════════════════════════════════════════════════════════════════════
+//  夥伴支援任務（單一分頁，不分專案）
+// ════════════════════════════════════════════════════════════════════════════
+
+function getPartnerSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sheet = ss.getSheetByName(SHEET_NAME_PARTNERS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME_PARTNERS);
+
+  const firstRow = sheet.getRange(1, 1, 1, PARTNER_HEADERS.length).getValues()[0];
+  const isEmpty = firstRow.every(v => String(v).trim() === '');
+  if (isEmpty) {
+    sheet.getRange(1, 1, 1, PARTNER_HEADERS.length).setValues([PARTNER_HEADERS]);
+    sheet.setFrozenRows(1);
+  }
+  applyPartnerValidation_(sheet);
+  return sheet;
+}
+
+function applyPartnerValidation_(sheet) {
+  const numRows = 400;
+  const statusRule = SpreadsheetApp.newDataValidation().requireValueInList(PARTNER_STATUS_LIST, true).setAllowInvalid(true).build();
+  sheet.getRange(2, 6, numRows, 1).setDataValidation(statusRule); // F 欄＝狀態
+}
+
+/** 夥伴名下拉建議：預設清單 + Sheet 上已經實際用過的名字（新名字用過一次之後，之後就會出現在建議清單） */
+function getPartnerList_() {
+  const sheet = getPartnerSheet_();
+  const values = sheet.getDataRange().getValues();
+  const used = [];
+  if (values.length > 1) {
+    const headers = values[0].map(h => String(h).trim());
+    const col = headers.indexOf('夥伴名');
+    if (col !== -1) {
+      for (let i = 1; i < values.length; i++) {
+        const v = String(values[i][col]).trim();
+        if (v) used.push(v);
+      }
+    }
+  }
+  return Array.from(new Set(DEFAULT_PARTNERS.concat(used)));
+}
+
+function readPartnerTasks_() {
+  const sheet = getPartnerSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const headers = values[0].map(h => String(h).trim());
+  const taskById = {};
+  getAllTasks_().forEach(t => { taskById[t.id] = t; });
+
+  const items = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const hasContent = row.some(cell => String(cell).trim() !== '');
+    if (!hasContent) continue;
+
+    const item = {};
+    headers.forEach((header, idx) => {
+      const field = PARTNER_HEADER_MAP[header];
+      if (!field) return;
+      const raw = row[idx];
+      if (field === 'deadline') {
+        item.deadline = formatDeadline_(raw);
+      } else if (isDate_(raw)) {
+        item[field] = Utilities.formatDate(raw, TIMEZONE, 'yyyy-MM-dd');
+      } else {
+        item[field] = String(raw).trim();
+      }
+    });
+
+    if (!item.id) continue; // 沒有 ID 的空白列跳過
+    item.project = item.project || '';
+    item.projectLabel = item.project ? displayProjectName_(item.project) : '';
+    item.taskId = item.taskId || '';
+    const linkedTask = item.taskId ? taskById[item.taskId] : null;
+    item.taskName = linkedTask ? linkedTask.name : '';
+    item.note = item.note || '';
+    items.push(item);
+  }
+  return items;
+}
+
+function generatePartnerTaskId_(sheet) {
+  const values = sheet.getDataRange().getValues();
+  let maxNum = 0;
+  if (values.length > 1) {
+    const headers = values[0].map(h => String(h).trim());
+    const idCol = headers.indexOf('ID');
+    if (idCol !== -1) {
+      for (let i = 1; i < values.length; i++) {
+        const m = String(values[i][idCol]).trim().match(/^P(\d+)$/);
+        if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+      }
+    }
+  }
+  return 'P' + (maxNum + 1);
+}
+
+function findPartnerTaskRow_(id) {
+  const sheet = getPartnerSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+  const headers = values[0].map(h => String(h).trim());
+  const idCol = headers.indexOf('ID');
+  if (idCol === -1) return null;
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][idCol]).trim() === String(id).trim()) {
+      return { sheet: sheet, rowIndex: i + 1 };
+    }
+  }
+  return null;
+}
+
+function getPartnerTaskById_(id) {
+  if (!findPartnerTaskRow_(id)) return null;
+  return readPartnerTasks_().find(t => t.id === id) || null;
+}
+
+function addPartnerTask_(data) {
+  const sheet = getPartnerSheet_();
+  const id = generatePartnerTaskId_(sheet);
+  const deadline = formatDeadline_(data.deadline);
+  const row = [id, data.partner || '', data.project || '', data.taskId || '', data.detail || '', data.status || 'To Do', deadline, data.note || ''];
+  sheet.appendRow(row);
+  logToSheet_('add-partner', id + ' / ' + (data.partner || '') + ' / ' + (data.detail || ''));
+  return getPartnerTaskById_(id);
+}
+
+function updatePartnerTask_(id, data) {
+  if (!id) throw new Error('缺少 id');
+  const loc = findPartnerTaskRow_(id);
+  if (!loc) throw new Error('找不到夥伴支援任務 ID：' + id);
+  const sheet = loc.sheet;
+
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map(h => String(h).trim());
+  const fieldToHeader = { partner: '夥伴名', project: '關聯專案', taskId: '關聯任務', detail: '支援項目/細節', status: '狀態', deadline: '期限', note: '備注' };
+
+  Object.keys(fieldToHeader).forEach(field => {
+    if (Object.prototype.hasOwnProperty.call(data, field)) {
+      const col = headers.indexOf(fieldToHeader[field]);
+      if (col === -1) return;
+      let value = data[field];
+      if (field === 'deadline') value = formatDeadline_(value);
+      sheet.getRange(loc.rowIndex, col + 1).setValue(value);
+    }
+  });
+
+  logToSheet_('update-partner', id + ' / ' + JSON.stringify(data));
+  return getPartnerTaskById_(id);
+}
+
+function deletePartnerTask_(id) {
+  if (!id) throw new Error('缺少 id');
+  const loc = findPartnerTaskRow_(id);
+  if (!loc) throw new Error('找不到夥伴支援任務 ID：' + id);
+  loc.sheet.deleteRow(loc.rowIndex);
+  logToSheet_('delete-partner', id);
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
 //  doGet — 讀取
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -438,7 +617,13 @@ function doGet(e) {
     } else if (action === 'summary') {
       payload = { summary: getSummary_(tasks) };
     } else {
-      payload = { tasks, summary: getSummary_(tasks), updatedAt: new Date().toISOString() };
+      payload = {
+        tasks,
+        summary: getSummary_(tasks),
+        partnerTasks: readPartnerTasks_(),
+        partnerList: getPartnerList_(),
+        updatedAt: new Date().toISOString()
+      };
     }
     return jsonResponse_(payload);
   } catch (err) {
@@ -493,6 +678,18 @@ function handleApiWrite_(body) {
     }
     if (action === 'deleteTask') {
       deleteTask_(body.id);
+      return jsonResponse_({ ok: true });
+    }
+    if (action === 'addPartnerTask') {
+      const task = addPartnerTask_(body.task || {});
+      return jsonResponse_({ ok: true, task });
+    }
+    if (action === 'updatePartnerTask') {
+      const task = updatePartnerTask_(body.id, body.task || {});
+      return jsonResponse_({ ok: true, task });
+    }
+    if (action === 'deletePartnerTask') {
+      deletePartnerTask_(body.id);
       return jsonResponse_({ ok: true });
     }
     return jsonResponse_({ error: '未知的 action：' + action });
@@ -783,6 +980,33 @@ function ensureNoteColumnOnAllProjectSheets() {
     }
   });
   Logger.log('✅ 已幫所有專案分頁補上「備注」欄位標題');
+}
+
+/**
+ * 一次性 migration：如果「夥伴支援任務」分頁是手動建立的、A 欄不是「ID」（例如直接從「夥伴名」開始），
+ * 在 A 欄前面插入一欄並補上「ID」標題，既有資料列會自動往右移不會遺失，ID 欄位留空，
+ * 之後新增/編輯資料時後端會自動補上 P1、P2... 這種 ID。
+ * 在 Apps Script 編輯器手動執行一次即可，不用每次部署都跑。
+ */
+function fixPartnerSheetHeaders() {
+  const ss = SpreadsheetApp.getActive();
+  const sheet = ss.getSheetByName(SHEET_NAME_PARTNERS);
+  if (!sheet) { Logger.log('找不到「' + SHEET_NAME_PARTNERS + '」分頁，請先手動建立分頁。'); return; }
+
+  const lastCol = Math.max(sheet.getLastColumn(), 1);
+  const firstRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v).trim());
+
+  if (firstRow[0] === 'ID') {
+    Logger.log('第一欄已經是「ID」，不需要調整。');
+    return;
+  }
+  if (firstRow[0] === '夥伴名') {
+    sheet.insertColumnBefore(1);
+    sheet.getRange(1, 1).setValue('ID');
+    Logger.log('✅ 已在 A 欄插入「ID」欄位標題，既有資料自動往右移。');
+    return;
+  }
+  Logger.log('第一列內容不是預期的格式（' + firstRow.join(', ') + '），請手動確認分頁欄位順序是否正確。');
 }
 
 function testGetTasks() {

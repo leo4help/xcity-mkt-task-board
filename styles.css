@@ -185,6 +185,7 @@ section:first-of-type { padding-top: 32px; }
 .tag.status-waiting { background: #ede4d0; color: #8a7a55; }
 .tag.status-done { background: var(--good-bg); color: #1e6b47; }
 .tag.status-on-hold { background: #eee; color: #999; }
+.tag.status-doing { background: #eadfc4; color: #7a5c1e; }
 
 .tag.blocked { background: var(--bad-bg); color: #a2352a; }
 

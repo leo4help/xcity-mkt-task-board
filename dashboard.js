@@ -149,9 +149,24 @@
     return Array.isArray(window.XCITY_DEMO_TASKS) && typeof window.XCITY_DEMO_BUILD_SUMMARY === 'function';
   }
 
+  // 依「關聯專案／關聯任務」把夥伴支援項目補上顯示用的 projectLabel / taskName，邏輯對應 Code.gs 的 readPartnerTasks_
+  function resolveDemoPartnerTasks() {
+    const tasks = window.XCITY_DEMO_TASKS;
+    const list = window.XCITY_DEMO_PARTNER_TASKS || [];
+    return list.map(p => {
+      const relatedTask = p.taskId ? tasks.find(t => t.id === p.taskId) : null;
+      const projTask = p.project ? tasks.find(t => t.project === p.project) : null;
+      return Object.assign({}, p, {
+        projectLabel: projTask ? (projTask.projectLabel || projTask.project) : (p.project || ''),
+        taskName: relatedTask ? relatedTask.name : ''
+      });
+    });
+  }
+
   async function fetchData() {
     if (isDemoMode()) {
-      return { tasks: window.XCITY_DEMO_TASKS, summary: window.XCITY_DEMO_BUILD_SUMMARY(window.XCITY_DEMO_TASKS) };
+      const summary = window.XCITY_DEMO_BUILD_SUMMARY(window.XCITY_DEMO_TASKS);
+      return { tasks: window.XCITY_DEMO_TASKS, summary, partnerTasks: resolveDemoPartnerTasks() };
     }
     if (!window.XCITY_CONFIG || !window.XCITY_CONFIG.API_URL || !window.XCITY_CONFIG.API_TOKEN) {
       throw new Error('config.js 未正確設定 API_URL 或 API_TOKEN');
@@ -167,19 +182,22 @@
   function renderProjectNav(projects) {
     const links = ['<a href="#overview">總覽</a>'].concat(
       projects.map(p => `<a href="#${slugify(p.project)}">${escapeHtml(p.projectLabel || p.project)}</a>`)
-    );
+    ).concat(['<a href="#partners">夥伴支援</a>']);
     $('project-nav').innerHTML = links.join('');
   }
 
   // ── Tabs：每個分類（總覽／單一專案）各自佔一整頁，不是同一長頁往下滾動 ──
 
   function activateSection(id) {
-    const validIds = ['overview'].concat(lastProjects.map(p => slugify(p.project)));
+    const validIds = ['overview', 'partners'].concat(lastProjects.map(p => slugify(p.project)));
     if (!validIds.includes(id)) id = 'overview';
     activeSection = id;
 
     const overviewEl = $('overview');
     if (overviewEl) overviewEl.classList.toggle('tab-hidden', id !== 'overview');
+
+    const partnersEl = $('partners');
+    if (partnersEl) partnersEl.classList.toggle('tab-hidden', id !== 'partners');
 
     document.querySelectorAll('#project-sections > section').forEach(sec => {
       sec.classList.toggle('tab-hidden', sec.id !== id);
@@ -344,6 +362,29 @@
     $('project-sections').innerHTML = html;
   }
 
+  function renderPartnersTable(partnerTasks) {
+    const tbody = $('partners-body');
+    if (!tbody) return;
+
+    if (!partnerTasks || partnerTasks.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">目前還沒有夥伴支援項目</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = partnerTasks.map(t => {
+      const statusCls = 'tag status-' + (t.status || 'To Do').toLowerCase().replace(/\s+/g, '-');
+      return `<tr>
+        <td class="name-cell">${escapeHtml(t.partner)}</td>
+        <td>${escapeHtml(t.projectLabel || '-')}</td>
+        <td>${escapeHtml(t.taskName || '-')}</td>
+        <td>${escapeHtml(t.detail || '')}</td>
+        <td><span class="${statusCls}">${escapeHtml(t.status || '-')}</span></td>
+        <td>${escapeHtml(t.deadline || '待訂')}</td>
+        <td>${escapeHtml(t.note || '')}</td>
+      </tr>`;
+    }).join('');
+  }
+
   async function loadAndRender() {
     const btn = $('refresh-btn');
     btn.classList.add('spinning');
@@ -358,6 +399,7 @@
       renderProjectNav(summary.projects);
       renderOverviewCallout(summary);
       renderProjectSections(summary.projects, summary.today);
+      renderPartnersTable(data.partnerTasks || []);
       activateSection(activeSection);
     } catch (err) {
       console.error(err);
