@@ -103,6 +103,14 @@
     return 'low';
   }
 
+  // 已完成數旁邊用括號附註持續執行中的數量，例如 "1,(2)"（1 筆 Done、2 筆 Processing）；
+  // 沒有 Done 只有 Processing 時只顯示 "(2)"；都沒有 Processing 就正常顯示數字。
+  function doneProcessingText(done, processing) {
+    if (processing > 0 && done > 0) return done + ',(' + processing + ')';
+    if (processing > 0) return '(' + processing + ')';
+    return String(done);
+  }
+
   // Processing（執行中）的期限代表「執行到什麼時候」而不是「要完成的截止日」，
   // 留空＝沒有固定期限、會一直做下去；有日期則不套用逾期判斷，改用「執行至」的說法跟其他任務區隔開。
   function getDueInfo(deadline, today, status) {
@@ -246,7 +254,7 @@
         <section id="${slugify(proj.project)}" class="project-card card">
           <div class="project-head">
             <div class="project-name">${escapeHtml(proj.projectLabel || proj.project)}</div>
-            <div class="project-progress-chip"><b>${proj.done}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
+            <div class="project-progress-chip"><b>${doneProcessingText(proj.done, proj.processing)}</b> / ${proj.total} 已完成（${proj.completionRate}%）${proj.blocked > 0 ? ` · <span style="color:var(--bad);">🚧 ${proj.blocked} 筆需要支援</span>` : ''}</div>
           </div>
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
