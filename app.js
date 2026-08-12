@@ -284,14 +284,17 @@
       return;
     }
 
-    tbody.innerHTML = state.projects.map(p => `
+    tbody.innerHTML = state.projects.map(p => {
+      const todoCount = (p.tasks || []).filter(t => t.status === 'To Do').length;
+      return `
       <tr data-id="${escapeHtml(slugify(p.project))}">
         <td class="name-cell">${escapeHtml(p.projectLabel || p.project)}</td>
         <td>${p.total}</td>
-        <td>${p.processing || 0}</td>
+        <td>${todoCount}</td>
         <td>${p.completionRate}%</td>
         <td>${p.blocked > 0 ? `<span style="color:var(--bad);font-weight:700;">🚧 ${p.blocked}</span>` : '-'}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     tbody.querySelectorAll('tr[data-id]').forEach(el => {
       el.addEventListener('click', () => {
