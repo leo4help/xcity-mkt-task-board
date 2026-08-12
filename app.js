@@ -258,6 +258,33 @@
     $('project-nav').innerHTML = links.join('');
   }
 
+  function renderOverviewProjectsTable() {
+    const tbody = $('overview-projects-body');
+    if (!tbody) return;
+
+    if (state.projects.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">還沒有專案</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.projects.map(p => `
+      <tr data-id="${escapeHtml(slugify(p.project))}">
+        <td class="name-cell">${escapeHtml(p.projectLabel || p.project)}</td>
+        <td>${p.total}</td>
+        <td>${p.processing || 0}</td>
+        <td>${p.completionRate}%</td>
+        <td>${p.blocked > 0 ? `<span style="color:var(--bad);font-weight:700;">🚧 ${p.blocked}</span>` : '-'}</td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('tr[data-id]').forEach(el => {
+      el.addEventListener('click', () => {
+        activateSection(el.dataset.id);
+        history.replaceState(null, '', '#' + el.dataset.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
   // ── Tabs：每個分類（總覽／單一專案）各自佔一整頁，不是同一長頁往下滾動 ──
 
   function activateSection(id) {
@@ -376,6 +403,7 @@
   function render() {
     renderKPIs();
     renderProjectNav();
+    renderOverviewProjectsTable();
     renderProjectSections();
   }
 
