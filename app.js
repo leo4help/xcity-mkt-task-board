@@ -223,10 +223,10 @@
   function renderKPIs() {
     const s = state.summary;
     if (!s) return;
+    $('kpi-total').textContent = s.total;
     $('kpi-doing').textContent = s.inProgressCount;
-    $('kpi-today').textContent = s.dueTodayCount;
-    $('kpi-blocked').textContent = s.blockedCount;
     $('kpi-completion').textContent = s.completionRate + '%';
+    $('kpi-blocked').textContent = s.blockedCount;
     $('overview-tag').textContent = state.projects.length + ' 個專案・共 ' + s.total + ' 筆任務';
   }
 
