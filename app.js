@@ -379,21 +379,12 @@
 
   // ── Modal（新增 / 編輯）─────────────────────────────────────────────────
 
-  // 分頁名稱如果是「專案A_...」這種「專案＋英文字母」開頭的命名慣例，顯示時把前綴拿掉
-  function displayProjectName(name) {
-    const m = String(name).match(/^專案[A-Za-z]+[_\-\s]*(.*)$/);
-    if (m && m[1]) return m[1].trim();
-    return name;
-  }
-
+  // 只列出 Sheet 上真的存在的專案分頁（value 用原始分頁名稱，選了才會正確對應到既有分頁，
+  // 不會因為選到「清單預填名稱」而誤建一個重複的新分頁）。要開新專案就直接打新名稱即可。
   function projectOptions() {
-    const configured = (window.XCITY_CONFIG && window.XCITY_CONFIG.PROJECTS) || [];
-    const labelMap = {};
-    state.projects.forEach(p => { labelMap[p.project] = p.projectLabel || p.project; });
-    const all = Array.from(new Set(configured.concat(Object.keys(labelMap))));
-    return all.map(p => {
-      const label = labelMap[p] || displayProjectName(p);
-      return `<option value="${escapeHtml(p)}">${escapeHtml(label)}</option>`;
+    return state.projects.map(p => {
+      const label = p.projectLabel || p.project;
+      return `<option value="${escapeHtml(p.project)}">${escapeHtml(label)}</option>`;
     }).join('');
   }
 
