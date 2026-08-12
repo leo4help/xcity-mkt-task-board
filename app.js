@@ -170,9 +170,27 @@
     return data;
   }
 
+  // 依「目前已有幾個專案」對應字母：0→A, 1→B ... 25→Z, 26→AA ...（跟 Code.gs 的 numberToLetters_ 邏輯一致）
+  function numberToLetters(n) {
+    let s = '';
+    n = n + 1;
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      s = String.fromCharCode(65 + rem) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  // 新建立專案時自動加上「專案X_」前綴，跟 Code.gs 的 buildAutoProjectTabName_ 邏輯一致
+  function buildAutoProjectName(rawName, existingProjects) {
+    if (/^專案[A-Za-z]+[_\-\s]/.test(rawName)) return rawName;
+    return '專案' + numberToLetters(existingProjects.length) + '_' + rawName;
+  }
+
   function nextDemoId(project) {
     const letterIdx = Array.from(new Set(window.XCITY_DEMO_TASKS.map(t => t.project))).indexOf(project);
-    const letter = String.fromCharCode(65 + (letterIdx === -1 ? window.XCITY_DEMO_TASKS.length : letterIdx));
+    const letter = numberToLetters(letterIdx === -1 ? new Set(window.XCITY_DEMO_TASKS.map(t => t.project)).size : letterIdx);
     const nums = window.XCITY_DEMO_TASKS
       .filter(t => t.project === project)
       .map(t => { const m = String(t.id).match(/(\d+)$/); return m ? parseInt(m[1], 10) : 0; });
@@ -183,7 +201,10 @@
   function demoPostApi(action, extra) {
     const tasks = window.XCITY_DEMO_TASKS;
     if (action === 'addTask') {
-      const task = Object.assign({ id: nextDemoId(extra.task.project) }, extra.task);
+      const existingProjects = Array.from(new Set(tasks.map(t => t.project)));
+      const rawProject = (extra.task.project || '').trim();
+      const project = existingProjects.includes(rawProject) ? rawProject : buildAutoProjectName(rawProject, existingProjects);
+      const task = Object.assign({ id: nextDemoId(project) }, extra.task, { project });
       task.blocked = !!(task.supportNeed && task.supportNeed.trim());
       tasks.push(task);
       return { ok: true, task };

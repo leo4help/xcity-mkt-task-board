@@ -203,6 +203,16 @@ function applyValidation_(sheet) {
   sheet.getRange(2, 3, numRows, 1).setDataValidation(priorityRule); // C 欄＝優先度
 }
 
+/**
+ * 新建立專案分頁時，依「目前已有幾個專案分頁」自動加上「專案X_」前綴（X 依序 A, B, C...Z, AA, AB...），
+ * 跟既有分頁的命名習慣一致。如果使用者自己打的名稱已經是「專案X_」開頭，就不重複加。
+ */
+function buildAutoProjectTabName_(rawName) {
+  if (/^專案[A-Za-z]+[_\-\s]/.test(rawName)) return rawName;
+  const letter = numberToLetters_(getProjectSheets_().length);
+  return '專案' + letter + '_' + rawName;
+}
+
 function getOrCreateProjectSheet_(projectName) {
   const name = String(projectName || '').trim();
   if (!name) throw new Error('缺少專案名稱');
@@ -210,7 +220,8 @@ function getOrCreateProjectSheet_(projectName) {
   const ss = SpreadsheetApp.getActive();
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
-    sheet = ss.insertSheet(name);
+    const tabName = buildAutoProjectTabName_(name);
+    sheet = ss.insertSheet(tabName);
     ensureHeaders_(sheet);
   }
   return sheet;
