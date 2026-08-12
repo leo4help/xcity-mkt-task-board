@@ -583,6 +583,15 @@
     const project = existingTask ? existingTask.project : ($('f-project').value.trim());
     if (!project) { alert('請輸入專案名稱'); return; }
 
+    // 如果打的專案名稱不是既有的分頁，跳出確認，避免手滑或重試造成重複建立分頁
+    if (!existingTask) {
+      const knownProjects = state.projects.map(p => p.project);
+      if (!knownProjects.includes(project)) {
+        const ok = confirm('「' + project + '」目前不是既有專案，送出後會自動建立一個新的分頁。\n\n如果這個專案應該已經存在，請按「取消」，改從下拉選單挑選既有專案，避免建立重複分頁。\n\n確定要建立新專案嗎？');
+        if (!ok) return;
+      }
+    }
+
     const priority = Math.max(1, Math.min(10, parseInt($('f-priority').value, 10) || 5));
 
     const payload = {

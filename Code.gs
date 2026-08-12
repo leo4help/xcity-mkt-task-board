@@ -178,7 +178,15 @@ function getProjectSheets_() {
   return SpreadsheetApp.getActive().getSheets().filter(sh => !isSystemSheet_(sh.getName()));
 }
 
+/**
+ * 分頁名稱如果本身就是「專案X_」開頭，直接用裡面那個字母，
+ * 不受分頁在 Sheet 上實際排列順序影響（insertSheet 新建分頁時不保證排在最後面，
+ * 如果每次都重新用「目前排第幾個」現算字母，兩個分頁有機會算出同一個字母，
+ * 導致任務 ID 撞在一起）。只有完全沒有照這個命名習慣的手動分頁，才退回用排列順序推算。
+ */
 function getProjectLetter_(sheetName) {
+  const m = String(sheetName).match(/^專案([A-Za-z]+)[_\-\s]/);
+  if (m) return m[1].toUpperCase();
   const sheets = getProjectSheets_();
   const idx = sheets.findIndex(sh => sh.getName() === sheetName);
   return numberToLetters_(idx === -1 ? sheets.length : idx);
@@ -221,7 +229,8 @@ function getOrCreateProjectSheet_(projectName) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     const tabName = buildAutoProjectTabName_(name);
-    sheet = ss.insertSheet(tabName);
+    // 明確指定 index，強制新分頁排到最後面（insertSheet 不帶 index 時不保證排最後）
+    sheet = ss.insertSheet(tabName, ss.getNumSheets());
     ensureHeaders_(sheet);
   }
   return sheet;
