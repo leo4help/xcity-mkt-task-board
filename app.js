@@ -28,7 +28,8 @@
     { key: 'status', label: '狀態' },
     { key: 'priority', label: '優先度' },
     { key: 'deadline', label: '期限' },
-    { key: 'supportNeed', label: '需要支援' }
+    { key: 'supportNeed', label: '需要支援' },
+    { key: 'note', label: '備注' }
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -375,6 +376,9 @@
         const bv = b.deadline || '9999-12-31';
         return av.localeCompare(bv) * mul;
       }
+      if (column === 'note') {
+        return (a.note || '').localeCompare(b.note || '') * mul;
+      }
       // name（預設）
       return (a.name || '').localeCompare(b.name || '') * mul;
     });
@@ -421,7 +425,7 @@
 
       const rowsHtml = visibleTasks.length > 0
         ? visibleTasks.map(t => renderTaskRow(t, today)).join('')
-        : '<tr><td colspan="5" class="empty-state">沒有符合篩選條件的任務</td></tr>';
+        : '<tr><td colspan="6" class="empty-state">沒有符合篩選條件的任務</td></tr>';
 
       const supportHtml = blockedInProject.length > 0 ? `
         <div class="callout support">
@@ -466,6 +470,7 @@
       <td><span class="tag priority-chip ${priCls}">${escapeHtml(t.priority)}</span></td>
       <td><span class="due-pill ${due.cls}">${escapeHtml(due.text)}</span></td>
       <td>${t.blocked ? escapeHtml(t.supportNeed) : ''}</td>
+      <td>${escapeHtml(t.note || '')}</td>
     </tr>`;
   }
 
@@ -556,6 +561,10 @@
             <label>需要支援（卡在哪裡 / 需要什麼支援；不需要支援就留空）</label>
             <textarea id="f-support" placeholder="留空＝不需要支援；有填內容＝這筆任務會顯示為需要支援">${escapeHtml(task ? task.supportNeed : '')}</textarea>
           </div>
+          <div class="form-row">
+            <label>備注（純筆記，跟需要支援無關）</label>
+            <textarea id="f-note" placeholder="記錄補充資訊，例如背景說明、聯絡窗口等">${escapeHtml(task ? task.note : '')}</textarea>
+          </div>
           <div class="modal-actions">
             <div>${task ? '<button class="btn-danger" id="btn-delete">刪除任務</button>' : ''}</div>
             <div class="modal-actions-right">
@@ -602,7 +611,8 @@
       priority,
       status: $('f-status').value,
       deadline: $('f-deadline').value,
-      supportNeed: $('f-support').value.trim()
+      supportNeed: $('f-support').value.trim(),
+      note: $('f-note').value.trim()
     };
     if (!existingTask) payload.project = project;
 

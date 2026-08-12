@@ -11,7 +11,8 @@
     { key: 'status', label: '狀態' },
     { key: 'priority', label: '優先度' },
     { key: 'deadline', label: '期限' },
-    { key: 'supportNeed', label: '需要支援' }
+    { key: 'supportNeed', label: '需要支援' },
+    { key: 'note', label: '備注' }
   ];
 
   let activeSection = (location.hash || '#overview').slice(1);
@@ -227,6 +228,9 @@
         const bv = b.deadline || '9999-12-31';
         return av.localeCompare(bv) * mul;
       }
+      if (column === 'note') {
+        return (a.note || '').localeCompare(b.note || '') * mul;
+      }
       return (a.name || '').localeCompare(b.name || '') * mul;
     });
   }
@@ -305,6 +309,7 @@
           <td><span class="tag priority-chip ${priCls}">${escapeHtml(t.priority)}</span></td>
           <td><span class="due-pill ${due.cls}">${escapeHtml(due.text)}</span></td>
           <td>${t.blocked ? escapeHtml(t.supportNeed) : ''}</td>
+          <td>${escapeHtml(t.note || '')}</td>
         </tr>`;
       }).join('');
 

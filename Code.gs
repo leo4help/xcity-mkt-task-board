@@ -7,7 +7,7 @@
  * 其餘所有分頁都會被視為一個專案，自動彙整成 doGet 回傳的 summary.projects。
  *
  * 每個專案分頁欄位（第一列為標題）：
- *   ID | 任務名稱 | 優先度 | 狀態 | 期限 | 需要支援
+ *   ID | 任務名稱 | 優先度 | 狀態 | 期限 | 需要支援 | 備注
  *
  *   - ID：依專案分頁順序自動對應英文字母（第 1 個專案分頁＝A、第 2 個＝B...），
  *         同一分頁內流水號遞增，例如 A1、A2、B1、B2。新增任務時自動產生，不用手動填。
@@ -21,6 +21,7 @@
  *          其他狀態（To Do / Waiting）有填日期，維持原本「截止日」的意思，過期會顯示逾期警示。
  *   - 需要支援：空白＝不需要支援；只要有填文字，就代表這個任務需要支援，
  *              內容就是卡在哪裡 / 需要什麼支援（取代原本的「是否卡關」勾選欄位）。
+ *   - 備注：純筆記欄位，跟「需要支援」無關，不會觸發卡關通知，單純給團隊記錄補充資訊用。
  *
  * 分頁「config」（兩欄 key/value）：
  *   API_TOKEN                 必填，前端 config.js 要對應
@@ -50,7 +51,7 @@ const TIMEZONE = 'Asia/Taipei';
 const DASHBOARD_URL = 'https://leo4help.github.io/task-board/dashboard.html'; // 部署後請自行更新
 const BOARD_URL = 'https://leo4help.github.io/task-board/'; // 部署後請自行更新
 
-const HEADERS = ['ID', '任務名稱', '優先度', '狀態', '期限', '需要支援'];
+const HEADERS = ['ID', '任務名稱', '優先度', '狀態', '期限', '需要支援', '備注'];
 
 const HEADER_MAP = {
   'ID': 'id',
@@ -58,7 +59,8 @@ const HEADER_MAP = {
   '優先度': 'priority',
   '狀態': 'status',
   '期限': 'deadline',
-  '需要支援': 'supportNeed'
+  '需要支援': 'supportNeed',
+  '備注': 'note'
 };
 
 const STATUS_LIST = ['To Do', 'Processing', 'Waiting', 'On Hold', 'Done'];
@@ -273,6 +275,7 @@ function readTasksFromSheet_(sheet) {
     if (!task.id) continue; // 沒有 ID 的空白列跳過
     task.supportNeed = task.supportNeed || '';
     task.blocked = task.supportNeed.trim() !== '';
+    task.note = task.note || ''; // 舊分頁如果還沒補上「備注」欄位，讀取時預設空字串
     if (task.priority === undefined) task.priority = DEFAULT_PRIORITY;
     tasks.push(task);
   }
@@ -507,7 +510,7 @@ function addTask_(data) {
   const deadline = formatDeadline_(data.deadline);
   const priority = normalizePriority_(data.priority);
 
-  const row = [id, data.name || '', priority, data.status || 'To Do', deadline, data.supportNeed || ''];
+  const row = [id, data.name || '', priority, data.status || 'To Do', deadline, data.supportNeed || '', data.note || ''];
   sheet.appendRow(row);
 
   if (data.supportNeed) {
@@ -531,7 +534,7 @@ function updateTask_(id, data) {
   const before = getTaskById_(id);
   const wasBlocked = before ? !!before.blocked : false;
 
-  const fieldToHeader = { name: '任務名稱', priority: '優先度', status: '狀態', deadline: '期限', supportNeed: '需要支援' };
+  const fieldToHeader = { name: '任務名稱', priority: '優先度', status: '狀態', deadline: '期限', supportNeed: '需要支援', note: '備注' };
 
   Object.keys(fieldToHeader).forEach(field => {
     if (Object.prototype.hasOwnProperty.call(data, field)) {
@@ -765,6 +768,21 @@ function setupSheet() {
 function applyValidationToAllProjectSheets() {
   getProjectSheets_().forEach(applyValidation_);
   Logger.log('✅ 已套用下拉選單到所有專案分頁');
+}
+
+/**
+ * 新增「備注」欄位後，既有的專案分頁不會自動補上這個標題（新建的分頁才會有）。
+ * 執行這個一次，幫所有現有專案分頁的標題列補上「備注」（沒有就補在最後一欄，已經有就跳過）。
+ */
+function ensureNoteColumnOnAllProjectSheets() {
+  getProjectSheets_().forEach(sheet => {
+    const lastCol = Math.max(sheet.getLastColumn(), 1);
+    const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+    if (headerRow.indexOf('備注') === -1) {
+      sheet.getRange(1, lastCol + 1).setValue('備注');
+    }
+  });
+  Logger.log('✅ 已幫所有專案分頁補上「備注」欄位標題');
 }
 
 function testGetTasks() {

@@ -17,10 +17,10 @@
   const STATUS_LIST = ['To Do', 'Processing', 'Waiting', 'On Hold', 'Done'];
 
   window.XCITY_DEMO_TASKS = [
-    { id: 'A1', name: '談判 KOL A 授權金', project: '專案A_8月 KOL 開箱活動', priority: 8, status: 'Processing', deadline: '2026-08-10', supportNeed: '' },
-    { id: 'A2', name: '素材腳本撰寫', project: '專案A_8月 KOL 開箱活動', priority: 5, status: 'Done', deadline: '2026-08-05', supportNeed: '' },
-    { id: 'A3', name: '開箱影片拍攝', project: '專案A_8月 KOL 開箱活動', priority: 9, status: 'Waiting', deadline: '2026-08-13', supportNeed: '需要老闆核准額外預算，KOL 要求加碼 ¥50,000' },
-    { id: 'A4', name: '上架素材審核', project: '專案A_8月 KOL 開箱活動', priority: 3, status: 'To Do', deadline: '2026-08-18', supportNeed: '' },
+    { id: 'A1', name: '談判 KOL A 授權金', project: '專案A_8月 KOL 開箱活動', priority: 8, status: 'Processing', deadline: '2026-08-10', supportNeed: '', note: '窗口：KOL 經紀人 Wendy' },
+    { id: 'A2', name: '素材腳本撰寫', project: '專案A_8月 KOL 開箱活動', priority: 5, status: 'Done', deadline: '2026-08-05', supportNeed: '', note: '' },
+    { id: 'A3', name: '開箱影片拍攝', project: '專案A_8月 KOL 開箱活動', priority: 9, status: 'Waiting', deadline: '2026-08-13', supportNeed: '需要老闆核准額外預算，KOL 要求加碼 ¥50,000', note: '' },
+    { id: 'A4', name: '上架素材審核', project: '專案A_8月 KOL 開箱活動', priority: 3, status: 'To Do', deadline: '2026-08-18', supportNeed: '', note: '' },
 
     { id: 'B1', name: '首頁 Banner 設計', project: '專案B_官網改版', priority: 6, status: 'Processing', deadline: '2026-08-14', supportNeed: '' },
     { id: 'B2', name: '產品頁 UX 優化', project: '專案B_官網改版', priority: 9, status: 'Waiting', deadline: '2026-08-11', supportNeed: '等 IT 部門開放測試站權限，已催第二次' },
