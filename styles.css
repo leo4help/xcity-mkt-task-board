@@ -298,6 +298,10 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: #fafaf6; cursor: pointer; }
 .name-cell { font-weight: 700; color: var(--ink); }
 
+thead th.sortable-th { cursor: pointer; user-select: none; }
+thead th.sortable-th:hover { background: var(--tan); }
+thead th.sortable-th.active { color: var(--brand-gold); }
+
 /* ── Misc ── */
 
 .loading, .error { padding: 48px; text-align: center; color: var(--ink-soft); font-size: 14px; }

@@ -19,8 +19,17 @@
     summary: null,
     filters: { priorityBand: '', status: '', blocked: '', search: '' },
     editingId: null,
-    activeSection: (location.hash || '#overview').slice(1)
+    activeSection: (location.hash || '#overview').slice(1),
+    sort: { column: 'deadline', dir: 'asc' } // 預設用期限排序，越近的排越上面
   };
+
+  const SORT_COLUMNS = [
+    { key: 'name', label: '任務名稱' },
+    { key: 'status', label: '狀態' },
+    { key: 'priority', label: '優先度' },
+    { key: 'deadline', label: '期限' },
+    { key: 'supportNeed', label: '需要支援' }
+  ];
 
   const $ = (id) => document.getElementById(id);
 
@@ -337,6 +346,61 @@
     return true;
   }
 
+  // ── 排序：點表頭可以切換排序欄位／方向，預設依期限（越近越上面）──────────
+
+  function sortTasks(tasks) {
+    const { column, dir } = state.sort;
+    const mul = dir === 'asc' ? 1 : -1;
+
+    return tasks.slice().sort((a, b) => {
+      if (column === 'supportNeed') {
+        const aHas = !!(a.supportNeed && a.supportNeed.trim());
+        const bHas = !!(b.supportNeed && b.supportNeed.trim());
+        if (aHas !== bHas) return (aHas ? -1 : 1) * mul;
+        return (a.supportNeed || '').localeCompare(b.supportNeed || '') * mul;
+      }
+      if (column === 'status') {
+        const av = STATUS_ORDER.indexOf(a.status);
+        const bv = STATUS_ORDER.indexOf(b.status);
+        return ((av === -1 ? 999 : av) - (bv === -1 ? 999 : bv)) * mul;
+      }
+      if (column === 'priority') {
+        return ((Number(a.priority) || 0) - (Number(b.priority) || 0)) * mul;
+      }
+      if (column === 'deadline') {
+        const av = a.deadline || '9999-12-31';
+        const bv = b.deadline || '9999-12-31';
+        return av.localeCompare(bv) * mul;
+      }
+      // name（預設）
+      return (a.name || '').localeCompare(b.name || '') * mul;
+    });
+  }
+
+  function tableHeadHtml() {
+    const cells = SORT_COLUMNS.map(col => {
+      const active = state.sort.column === col.key;
+      const arrow = active ? (state.sort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return `<th class="sortable-th${active ? ' active' : ''}" data-sort="${col.key}">${col.label}${arrow}</th>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }
+
+  function bindSortHeaderClicks() {
+    $('project-sections').addEventListener('click', e => {
+      const th = e.target.closest('th[data-sort]');
+      if (!th) return;
+      const col = th.dataset.sort;
+      if (state.sort.column === col) {
+        state.sort.dir = state.sort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sort.column = col;
+        state.sort.dir = 'asc';
+      }
+      renderProjectSections();
+    });
+  }
+
   // ── Render: Project sections ────────────────────────────────────────────
 
   function renderProjectSections() {
@@ -349,7 +413,7 @@
     }
 
     const html = state.projects.map(proj => {
-      const visibleTasks = proj.tasks.filter(taskMatchesFilters);
+      const visibleTasks = sortTasks(proj.tasks.filter(taskMatchesFilters));
       const blockedInProject = proj.tasks.filter(t => t.blocked);
 
       const rowsHtml = visibleTasks.length > 0
@@ -376,7 +440,7 @@
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>任務名稱</th><th>狀態</th><th>優先度</th><th>期限</th><th>需要支援</th></tr></thead>
+              <thead>${tableHeadHtml()}</thead>
               <tbody>${rowsHtml}</tbody>
             </table>
           </div>
@@ -579,6 +643,7 @@
     $('refresh-btn').addEventListener('click', loadAndRender);
     $('add-task-btn').addEventListener('click', () => openModal(null));
     bindNavClicks();
+    bindSortHeaderClicks();
 
     if (window.XCITY_CONFIG && window.XCITY_CONFIG.SHEET_URL) {
       $('sheet-link').href = window.XCITY_CONFIG.SHEET_URL;

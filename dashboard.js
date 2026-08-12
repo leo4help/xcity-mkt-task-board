@@ -4,9 +4,20 @@
   const AUTH_KEY = 'xcity_marketing_auth_token';
   const AUTH_EXPIRY_DAYS = 7;
   const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 分鐘自動重新整理
+  const STATUS_ORDER = ['To Do', 'Processing', 'Waiting', 'On Hold', 'Done'];
+
+  const SORT_COLUMNS = [
+    { key: 'name', label: '任務名稱' },
+    { key: 'status', label: '狀態' },
+    { key: 'priority', label: '優先度' },
+    { key: 'deadline', label: '期限' },
+    { key: 'supportNeed', label: '需要支援' }
+  ];
 
   let activeSection = (location.hash || '#overview').slice(1);
   let lastProjects = [];
+  let lastToday = '';
+  let sortState = { column: 'deadline', dir: 'asc' }; // 預設用期限排序，越近的排越上面
 
   const $ = (id) => document.getElementById(id);
 
@@ -50,6 +61,7 @@
       $('sheet-link').href = window.XCITY_CONFIG.SHEET_URL;
     }
     bindNavClicks();
+    bindSortHeaderClicks();
     loadAndRender();
     setInterval(loadAndRender, AUTO_REFRESH_MS);
   }
@@ -189,6 +201,61 @@
     });
   }
 
+  // ── 排序：點表頭可以切換排序欄位／方向，預設依期限（越近越上面）──────────
+
+  function sortTasks(tasks) {
+    const { column, dir } = sortState;
+    const mul = dir === 'asc' ? 1 : -1;
+
+    return tasks.slice().sort((a, b) => {
+      if (column === 'supportNeed') {
+        const aHas = !!(a.supportNeed && a.supportNeed.trim());
+        const bHas = !!(b.supportNeed && b.supportNeed.trim());
+        if (aHas !== bHas) return (aHas ? -1 : 1) * mul;
+        return (a.supportNeed || '').localeCompare(b.supportNeed || '') * mul;
+      }
+      if (column === 'status') {
+        const av = STATUS_ORDER.indexOf(a.status);
+        const bv = STATUS_ORDER.indexOf(b.status);
+        return ((av === -1 ? 999 : av) - (bv === -1 ? 999 : bv)) * mul;
+      }
+      if (column === 'priority') {
+        return ((Number(a.priority) || 0) - (Number(b.priority) || 0)) * mul;
+      }
+      if (column === 'deadline') {
+        const av = a.deadline || '9999-12-31';
+        const bv = b.deadline || '9999-12-31';
+        return av.localeCompare(bv) * mul;
+      }
+      return (a.name || '').localeCompare(b.name || '') * mul;
+    });
+  }
+
+  function tableHeadHtml() {
+    const cells = SORT_COLUMNS.map(col => {
+      const active = sortState.column === col.key;
+      const arrow = active ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+      return `<th class="sortable-th${active ? ' active' : ''}" data-sort="${col.key}">${col.label}${arrow}</th>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }
+
+  function bindSortHeaderClicks() {
+    $('project-sections').addEventListener('click', e => {
+      const th = e.target.closest('th[data-sort]');
+      if (!th) return;
+      const col = th.dataset.sort;
+      if (sortState.column === col) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.column = col;
+        sortState.dir = 'asc';
+      }
+      renderProjectSections(lastProjects, lastToday);
+      activateSection(activeSection);
+    });
+  }
+
   function renderKPIs(summary) {
     $('kpi-total').textContent = summary.total;
     $('kpi-total-sub').textContent = summary.projects.length + ' 個專案';
@@ -218,6 +285,8 @@
   }
 
   function renderProjectSections(projects, today) {
+    lastToday = today;
+
     if (projects.length === 0) {
       $('project-sections').innerHTML = '<div class="empty-state">目前還沒有任務</div>';
       return;
@@ -226,7 +295,7 @@
     const html = projects.map(proj => {
       const blockedTasks = proj.tasks.filter(t => t.blocked);
 
-      const rows = proj.tasks.map(t => {
+      const rows = sortTasks(proj.tasks).map(t => {
         const statusCls = 'tag status-' + (t.status || 'To Do').toLowerCase().replace(/\s+/g, '-');
         const priCls = 'priority-' + priorityBand(t.priority);
         const due = getDueInfo(t.deadline, today, t.status);
@@ -259,7 +328,7 @@
           <div class="project-bar-wrap"><div class="project-bar" style="width:${proj.completionRate}%;"></div></div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>任務名稱</th><th>狀態</th><th>優先度</th><th>期限</th><th>需要支援</th></tr></thead>
+              <thead>${tableHeadHtml()}</thead>
               <tbody>${rows}</tbody>
             </table>
           </div>
