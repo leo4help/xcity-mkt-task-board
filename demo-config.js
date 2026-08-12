@@ -1,4 +1,4 @@
-// 只給 demo.html / demo-dashboard.html 使用的假設定，正式部署請用 config.js
+// 只給 demo.html 使用的假設定（demo-dashboard.html 只是轉址過去），正式部署請用 config.js
 window.XCITY_CONFIG = {
   API_URL: "",
   API_TOKEN: "",

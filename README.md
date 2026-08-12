@@ -4,23 +4,25 @@
 
 呈現結構以「專案」為主體：**每個專案就是 Google Sheet 裡的一個分頁（Tab）**，分頁名稱＝專案名稱，裡面列出該專案的任務與處理狀態。不再有負責人欄位（全部都是 Marketing 內部任務，不需要標示執行者）。
 
+> **只有一個頁面**：`index.html` 是團隊跟老闆共用的唯一畫面，兩邊看到的內容、能做的操作完全一樣（都能新增/編輯/刪除任務跟夥伴支援項目）。`dashboard.html` / `demo-dashboard.html` 只是保留給舊書籤用的轉址頁，打開會自動跳到 `index.html` / `demo.html`，不需要另外維護。之後要改功能只要改 `index.html` / `app.js` 這一份就好。
+
 ## 先看 Demo（不用部署）
 
-在 Finder 裡直接雙擊打開 `demo.html`（團隊看板）或 `demo-dashboard.html`（老闆儀表板），瀏覽器會用假資料直接呈現畫面，不需要先設定 Google Sheet / Apps Script。demo.html 裡的新增/編輯/刪除任務都可以正常操作，只是資料存在瀏覽器分頁裡，重新整理就會重置，不會動到你之後正式部署的資料。
+在 Finder 裡直接雙擊打開 `demo.html`，瀏覽器會用假資料直接呈現畫面，不需要先設定 Google Sheet / Apps Script。新增/編輯/刪除任務都可以正常操作，只是資料存在瀏覽器分頁裡，重新整理就會重置，不會動到你之後正式部署的資料。
 
-確認風格 OK 之後，正式使用時改開 `index.html` / `dashboard.html`（要先照下面步驟部署 Code.gs）。
+確認風格 OK 之後，正式使用時改開 `index.html`（要先照下面步驟部署 Code.gs）。
 
 ## 組成
 
 - `Code.gs` — Google Apps Script 後端。掃描每個專案分頁、彙整摘要、Slack 需要支援通知、每日摘要。
-- `index.html` / `app.js` — Marketing 團隊看板。依專案分區塊呈現任務，可新增/編輯任務、標記需要支援。
-- `dashboard.html` / `dashboard.js` — 老闆專用唯讀儀表板。同樣以專案為主體，KPI + 進度條 + 需要支援清單，每 5 分鐘自動更新。
-- `styles.css` — 兩個頁面共用的樣式（暖米杏底 + 金棕卡片，參考 HULKEN 週報風格）。
-- `config.js` — 前端設定（API 網址、密碼開關等），兩個網頁共用。
+- `index.html` / `app.js` — 唯一的前端頁面，團隊跟老闆共用。依專案分區塊呈現任務，可新增/編輯任務、標記需要支援；有夥伴支援任務分頁；上方有篩選跟跳轉專案的導覽列。
+- `dashboard.html` / `demo-dashboard.html` — 純轉址頁（給舊網址/書籤用），分別會跳到 `index.html` / `demo.html`，不含實際內容。
+- `styles.css` — 頁面樣式（暖米杏底 + 金棕卡片，參考 HULKEN 週報風格）。
+- `config.js` — 前端設定（API 網址、密碼開關等）。
 
 ## 密碼鎖（目前預設關閉）
 
-為了方便快速查看，目前兩個頁面都不會要求輸入密碼。之後要恢復的話：
+為了方便快速查看，目前不會要求輸入密碼。之後要恢復的話：
 
 1. 打開 `config.js`，把 `REQUIRE_PASSWORD` 改成 `true`
 2. 確認 `PASSWORD` 欄位是你要用的密碼（目前預設 `888xcity`，跟舊版一樣）
@@ -50,7 +52,7 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
 
 ## 夥伴支援任務（獨立分頁：`夥伴支援任務`）
 
-跟專案任務分開的一個獨立分頁，用來追蹤「請哪個夥伴支援什麼、進度到哪」，不屬於任何一個專案分頁的任務列表。團隊看板（`index.html`）多了一個「夥伴支援」分頁可以新增/編輯/刪除，老闆儀表板（`dashboard.html`）也有同名唯讀區塊。
+跟專案任務分開的一個獨立分頁，用來追蹤「請哪個夥伴支援什麼、進度到哪」，不屬於任何一個專案分頁的任務列表。`index.html` 上有一個「夥伴支援」分頁，可以新增/編輯/刪除。
 
 **欄位（固定順序）**
 
@@ -89,7 +91,7 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
    - 執行身分：我（你自己）
    - 誰可以存取：任何人
 5. 複製部署後的網址，貼到 `config.js` 的 `API_URL`；`API_TOKEN` 貼上 config 分頁裡自動產生的值。
-6. 把 `index.html`、`app.js`、`styles.css`、`dashboard.html`、`dashboard.js`、`config.js` 放到你原本的靜態網頁託管位置（例如舊版用的 GitHub Pages），兩個頁面互有連結，不用分開部署。
+6. 把 `index.html`、`app.js`、`styles.css`、`config.js`（連同 `dashboard.html`、`demo.html`、`demo-dashboard.html` 等其他檔案）放到你原本的靜態網頁託管位置（例如舊版用的 GitHub Pages）就好，只有一個頁面要維護。
 7. 若要開啟 Slack 需要支援通知：在 Slack App 設定 Bot Token Scopes 需要 `chat:write`，把 Bot 加進頻道，`SLACK_CHANNEL_ID` 填入該頻道 ID。
 8. 若要每日摘要推播（可選）：在 Apps Script 執行一次 `setupDailyTrigger()`，會建立每天早上 9 點的排程。
 9. 如果你是手動先建好專案分頁（沒有用網頁新增任務），可以執行一次 `applyValidationToAllProjectSheets()`，幫「優先度」「狀態」欄位補上下拉選單。
@@ -99,15 +101,16 @@ Sheet 裡除了系統分頁（`config`、`debug_log`，以及你自己的 `Overv
 - **在網頁上新增任務**：「+ 新增任務」表單裡打專案名稱，如果是新名字，後端會自動建一個新分頁，並依「目前已有幾個專案分頁」自動加上「專案X_」前綴（X 依序 A、B、C...Z、AA、AB...，跟既有分頁命名習慣一致），畫面上還是只會顯示你打的乾淨名稱。如果你打的名稱自己就已經是「專案X_」開頭，不會重複加。
 - **直接在 Google Sheet 上手動建分頁**：分頁名稱就是專案名稱，記得依上面的欄位順序建標題列（或執行一次 `applyValidationToAllProjectSheets()` 補下拉選單）。系統分頁（`config`、`debug_log`）跟你自己用的 `Overview`、`Demo` 分頁不會被當成專案，如果之後有其他非專案用途的分頁，把名稱加進 `Code.gs` 的 `SYSTEM_SHEETS` 陣列。
 
-## 兩個網頁的差異
+## 只有一個頁面（`index.html`）
 
-- **`index.html`（團隊看板）**：Marketing 團隊每天用，依專案區塊新增任務、更新狀態、標記需要支援。上方有篩選（優先度/狀態/需要支援）與跳轉專案的導覽列。編輯任務時專案欄位是唯讀的（不支援直接換分頁，要換的話新增到新專案再刪除原本那筆）。
-- **`dashboard.html`（老闆儀表板）**：唯讀，KPI 卡片 + 各專案進度條 + 需要支援清單，給老闆一眼掌握「在忙什麼／完成了什麼／需要什麼」。每 5 分鐘自動重新整理。
+團隊跟老闆都用同一個網址、同一份程式碼，都能新增/編輯/刪除任務跟夥伴支援項目。依專案區塊呈現任務，上方有篩選（優先度/狀態/需要支援）與跳轉專案的導覽列。編輯任務時專案欄位是唯讀的（不支援直接換分頁，要換的話新增到新專案再刪除原本那筆）。
+
+`dashboard.html`、`demo-dashboard.html` 是給舊書籤用的轉址頁（自動跳到 `index.html`、`demo.html`），沒有任何獨立內容，之後改功能不用管它們。
 
 ## 技術細節備忘
 
 - 前端寫入（新增/編輯/刪除任務）走 `doPost`，用 `Content-Type: text/plain` 夾帶 JSON，避免瀏覽器對 Apps Script 發出 CORS preflight（Apps Script 不支援 OPTIONS 請求）。
 - 任務「需要支援」欄位從空白變成有內容時（新增或編輯），會自動觸發 Slack 通知（若已設定 Slack）。
-- `doGet` 回傳的 `summary.projects` 是依專案分頁分組好的陣列（含每個專案的任務清單、完成度、需要支援數，任務已依優先度排序），前端兩個頁面都是直接依這個結構渲染區塊。
+- `doGet` 回傳的 `summary.projects` 是依專案分頁分組好的陣列（含每個專案的任務清單、完成度、需要支援數，任務已依優先度排序），`index.html` 直接依這個結構渲染區塊。
 - 期限欄位如果是 `Endless`，字串比較上天生就大於任何 `yyyy-MM-dd` 日期字串，所以不會被誤判成逾期或今日到期，前端會顯示「持續作業」。
 - 新增任務表單的專案下拉建議（datalist）只列出 Sheet 上已經存在的分頁，選了會正確對應到那個分頁；`config.js` 的 `PROJECTS` 陣列目前沒有再被拿來預填建議清單（避免選到跟實際分頁名稱對不上、誤建重複分頁），保留欄位只是不影響運作。要開新專案，直接在表單打新名稱即可。

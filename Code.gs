@@ -49,8 +49,7 @@ const SHEET_NAME_PARTNERS = '夥伴支援任務';
 const SYSTEM_SHEETS = ['config', 'debug_log', 'Overview', 'Demo', '夥伴支援任務'];
 
 const TIMEZONE = 'Asia/Taipei';
-const DASHBOARD_URL = 'https://leo4help.github.io/task-board/dashboard.html'; // 部署後請自行更新
-const BOARD_URL = 'https://leo4help.github.io/task-board/'; // 部署後請自行更新
+const BOARD_URL = 'https://leo4help.github.io/task-board/'; // 部署後請自行更新（老闆與團隊共用同一個網址）
 
 const HEADERS = ['ID', '任務名稱', '優先度', '狀態', '期限', '需要支援', '備注'];
 
@@ -893,8 +892,7 @@ function buildDailyBlocks_() {
   blocks.push({
     type: 'actions',
     elements: [
-      { type: 'button', text: { type: 'plain_text', text: '查看老闆儀表板', emoji: true }, url: DASHBOARD_URL, style: 'primary' },
-      { type: 'button', text: { type: 'plain_text', text: '打開任務看板', emoji: true }, url: BOARD_URL }
+      { type: 'button', text: { type: 'plain_text', text: '查看任務看板', emoji: true }, url: BOARD_URL, style: 'primary' }
     ]
   });
 

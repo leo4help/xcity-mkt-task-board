@@ -1,5 +1,5 @@
 /**
- * 共用樣式 — 團隊看板 (index.html) 與老闆儀表板 (dashboard.html) 共用
+ * 共用樣式 — index.html（唯一頁面，團隊與老闆共用同一份），dashboard.html 只是轉址過去
  * 風格參考：HULKEN 週報（暖米杏底 + 金棕強調色 + 卡片式報告）
  */
 
@@ -115,8 +115,27 @@ nav.secnav a {
 nav.secnav a:hover { background: var(--tan-soft); color: var(--brand-deep); }
 nav.secnav a.active { background: var(--brand-deep); color: #fff; }
 nav.secnav a.active:hover { background: var(--brand-deep); color: #fff; }
+nav.secnav .inner.inner-secondary {
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
 
 .tab-hidden { display: none !important; }
+
+/* ── 任務表單：需要支援勾選 + 順便新增支援項目 ── */
+.checkbox-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+.support-add-block {
+  border: 1px dashed var(--line); border-radius: 10px;
+  padding: 12px 12px 2px; margin-top: 10px; background: var(--tan-soft);
+}
+.support-add-block .support-add-title {
+  font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px;
+}
 
 /* ── Sections ── */
 

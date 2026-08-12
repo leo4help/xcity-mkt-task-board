@@ -326,10 +326,11 @@
     $('overview-tag').textContent = state.projects.length + ' 個專案・共 ' + s.total + ' 筆任務';
   }
 
+  // 「夥伴支援」是固定連結，寫死在 HTML 的第二行導覽列，這裡只需要渲染「總覽」+ 各專案
   function renderProjectNav() {
     const links = ['<a href="#overview">總覽</a>'].concat(
       state.projects.map(p => `<a href="#${slugify(p.project)}">${escapeHtml(p.projectLabel || p.project)}</a>`)
-    ).concat(['<a href="#partners">夥伴支援</a>']);
+    );
     $('project-nav').innerHTML = links.join('');
   }
 
@@ -412,13 +413,14 @@
       sec.classList.toggle('tab-hidden', sec.id !== id);
     });
 
-    document.querySelectorAll('#project-nav a').forEach(a => {
+    document.querySelectorAll('nav.secnav a').forEach(a => {
       a.classList.toggle('active', a.getAttribute('href') === '#' + id);
     });
   }
 
+  // 導覽列現在有兩行（專案 / 夥伴支援），事件委派綁在 nav.secnav 上才能同時吃到兩行的點擊
   function bindNavClicks() {
-    $('project-nav').addEventListener('click', e => {
+    document.querySelector('nav.secnav').addEventListener('click', e => {
       const a = e.target.closest('a');
       if (!a) return;
       e.preventDefault();
@@ -654,12 +656,39 @@
             <div class="hint-text">留空＝沒有固定期限。狀態是 Processing 時，填日期代表「執行到什麼時候」；其他狀態則是一般的截止日。</div>
           </div>
           <div class="form-row">
-            <label>需要支援（卡在哪裡 / 需要什麼支援；不需要支援就留空）</label>
-            <textarea id="f-support" placeholder="留空＝不需要支援；有填內容＝這筆任務會顯示為需要支援">${escapeHtml(task ? task.supportNeed : '')}</textarea>
-          </div>
-          <div class="form-row">
             <label>備注（純筆記，跟需要支援無關）</label>
             <textarea id="f-note" placeholder="記錄補充資訊，例如背景說明、聯絡窗口等">${escapeHtml(task ? task.note : '')}</textarea>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-row"><input type="checkbox" id="f-need-support"${task && task.supportNeed ? ' checked' : ''}> 這筆任務需要支援</label>
+          </div>
+          <div id="support-block" class="${task && task.supportNeed ? '' : 'tab-hidden'}">
+            <div class="form-row">
+              <label>需要支援的內容（卡在哪裡 / 需要什麼支援）</label>
+              <textarea id="f-support" placeholder="說明卡在哪裡、需要什麼支援">${escapeHtml(task ? task.supportNeed : '')}</textarea>
+            </div>
+            <div class="support-add-block">
+              <div class="support-add-title">同時新增支援項目（選填，指定夥伴後會一併建立到「夥伴支援」分頁）</div>
+              <div class="form-row">
+                <label>夥伴名</label>
+                <input type="text" list="task-support-partner-list" id="f-support-partner" placeholder="輸入現有夥伴名，或打新名字新增">
+                <datalist id="task-support-partner-list">${partnerOptions()}</datalist>
+              </div>
+              <div class="form-row">
+                <label>支援期限（預計交付日）</label>
+                <input type="date" id="f-support-deadline">
+              </div>
+              <div class="form-row">
+                <label>狀態</label>
+                <select id="f-support-status">
+                  ${PARTNER_STATUS_LIST.map(s => `<option value="${s}">${s}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-row">
+                <label>備注</label>
+                <textarea id="f-support-note" placeholder="補充資訊"></textarea>
+              </div>
+            </div>
           </div>
           <div class="modal-actions">
             <div>${task ? '<button class="btn-danger" id="btn-delete">刪除任務</button>' : ''}</div>
@@ -676,6 +705,9 @@
     $('modal-overlay').addEventListener('click', e => { if (e.target.id === 'modal-overlay') closeModal(); });
     $('btn-save').addEventListener('click', saveTask);
     if (task) $('btn-delete').addEventListener('click', deleteTask);
+    $('f-need-support').addEventListener('change', e => {
+      $('support-block').classList.toggle('tab-hidden', !e.target.checked);
+    });
   }
 
   function closeModal() {
@@ -702,13 +734,16 @@
     }
 
     const priority = Math.max(1, Math.min(10, parseInt($('f-priority').value, 10) || 5));
+    const needSupport = $('f-need-support').checked;
+    const supportNeed = needSupport ? $('f-support').value.trim() : '';
+    const supportPartner = needSupport ? $('f-support-partner').value.trim() : '';
 
     const payload = {
       name,
       priority,
       status: $('f-status').value,
       deadline: $('f-deadline').value,
-      supportNeed: $('f-support').value.trim(),
+      supportNeed,
       note: $('f-note').value.trim()
     };
     if (!existingTask) payload.project = project;
@@ -717,11 +752,28 @@
     btn.textContent = '儲存中...';
     btn.disabled = true;
     try {
+      let result;
       if (state.editingId) {
-        await postApi('updateTask', { id: state.editingId, task: payload });
+        result = await postApi('updateTask', { id: state.editingId, task: payload });
       } else {
-        await postApi('addTask', { task: payload });
+        result = await postApi('addTask', { task: payload });
       }
+
+      // 有勾「需要支援」且填了夥伴名，順便在「夥伴支援」分頁建一筆關聯的支援項目
+      if (needSupport && supportPartner && result && result.task) {
+        await postApi('addPartnerTask', {
+          task: {
+            partner: supportPartner,
+            project: result.task.project,
+            taskId: result.task.id,
+            detail: supportNeed,
+            status: $('f-support-status').value,
+            deadline: $('f-support-deadline').value,
+            note: $('f-support-note').value.trim()
+          }
+        });
+      }
+
       closeModal();
       await loadAndRender();
     } catch (err) {

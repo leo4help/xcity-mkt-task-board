@@ -1,11 +1,11 @@
 /**
- * Demo 假資料 — 讓 demo.html / demo-dashboard.html 可以直接在瀏覽器打開預覽，
+ * Demo 假資料 — 讓 demo.html 可以直接在瀏覽器打開預覽（demo-dashboard.html 只是轉址過去，已跟 demo.html 合併），
  * 不需要先部署 Google Apps Script。
  *
  * 欄位對應 Code.gs v2（每個專案一個分頁）的資料結構：
  * id / name / project / priority(1-10) / status / deadline（留空＝沒有固定期限；Processing 狀態下有日期＝執行到什麼時候）/ supportNeed（空白＝不需要支援）
  *
- * app.js / dashboard.js 會偵測 window.XCITY_DEMO_TASKS 是否存在，
+ * app.js 會偵測 window.XCITY_DEMO_TASKS 是否存在，
  * 存在的話就跳過真正的 fetch，改用這份資料 + 本機運算的 summary。
  * 正式部署（config.js 指向真的 API_URL）時不會載入這個檔案，不影響正式環境。
  */
